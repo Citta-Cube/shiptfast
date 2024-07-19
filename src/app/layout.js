@@ -3,6 +3,7 @@ import { Inter as FontSans } from "next/font/google"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
+import ErrorBoundary from "@/components/ErrorBoundary"
 import "./globals.css"
 
 const fontSans = FontSans({
@@ -31,7 +32,9 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
           <Toaster />
         </ThemeProvider>
       </body>
