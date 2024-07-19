@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String
+  role           Role     @default(USER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  company        Company? @relation(fields: [companyId], references: [id])
+  companyId      String?
+  freightForwarder FreightForwarder? @relation(fields: [freightForwarderId], references: [id])
+  freightForwarderId String?
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  description String?
+  industry    String
+  brNumber    String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model FreightForwarder {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  description String?
+  brNumber    String   @unique
+  customFields Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+enum Role {
+  ADMIN
+  FREIGHT_FORWARDER
+  COMPANY_MANAGER
+  COMPANY_USER
+}

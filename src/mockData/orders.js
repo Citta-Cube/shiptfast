@@ -1,0 +1,140 @@
+// src/mockData/orders.js
+
+const mockOrders = [
+    {
+      id: "ORD001",
+      orderNumber: "CO-2023-001",
+      shipmentDate: "2023-07-15",
+      shipmentType: "sea",
+      loadType: "FCL",
+      originPort: "CNSHA",
+      originCountryCode: "CN",
+      destinationPort: "USLA",
+      destinationCountryCode: "US",
+      status: "open",
+      timeLeft: "2 days 5 hours",
+      quotationsReceived: 3
+    },
+    {
+      id: "ORD002",
+      orderNumber: "CO-2023-002",
+      shipmentDate: "2023-07-20",
+      shipmentType: "air",
+      loadType: "LCL",
+      originPort: "HKHKG",
+      originCountryCode: "HK",
+      destinationPort: "FRGAU",
+      destinationCountryCode: "FR",
+      status: "pending",
+      quotationsReceived: 5
+    },
+    {
+      id: "ORD003",
+      orderNumber: "CO-2023-003",
+      shipmentDate: "2023-07-10",
+      shipmentType: "sea",
+      loadType: "FCL",
+      originPort: "KRPUS",
+      originCountryCode: "KR",
+      destinationPort: "NLRTM",
+      destinationCountryCode: "NL",
+      status: "closed",
+      quotationsReceived: 4
+    },
+    {
+      id: "ORD004",
+      orderNumber: "CO-2023-004",
+      shipmentDate: "2023-07-25",
+      shipmentType: "air",
+      loadType: "LCL",
+      originPort: "JPNRT",
+      originCountryCode: "JP",
+      destinationPort: "DEHAM",
+      destinationCountryCode: "DE",
+      status: "open",
+      timeLeft: "4 days 12 hours",
+      quotationsReceived: 2
+    },
+    {
+      id: "ORD005",
+      orderNumber: "CO-2023-005",
+      shipmentDate: "2023-07-18",
+      shipmentType: "sea",
+      loadType: "FCL",
+      originPort: "SGSIN",
+      originCountryCode: "SG",
+      destinationPort: "AUMEL",
+      destinationCountryCode: "AU",
+      status: "pending",
+      quotationsReceived: 6
+    },
+    {
+      id: "ORD006",
+      orderNumber: "CO-2023-006",
+      shipmentDate: "2023-07-30",
+      shipmentType: "air",
+      loadType: "LCL",
+      originPort: "USNYC",
+      originCountryCode: "US",
+      destinationPort: "BRRIO",
+      destinationCountryCode: "BR",
+      status: "open",
+      timeLeft: "6 days 8 hours",
+      quotationsReceived: 1
+    },
+    {
+      id: "ORD007",
+      orderNumber: "CO-2023-007",
+      shipmentDate: "2023-07-22",
+      shipmentType: "sea",
+      loadType: "FCL",
+      originPort: "INNSA",
+      originCountryCode: "IN",
+      destinationPort: "ZADUR",
+      destinationCountryCode: "ZA",
+      status: "closed",
+      quotationsReceived: 5
+    },
+    {
+      id: "ORD008",
+      orderNumber: "CO-2023-008",
+      shipmentDate: "2023-08-05",
+      shipmentType: "air",
+      loadType: "LCL",
+      originPort: "MXMEX",
+      originCountryCode: "MX",
+      destinationPort: "CAYYZ",
+      destinationCountryCode: "CA",
+      status: "open",
+      timeLeft: "8 days 3 hours",
+      quotationsReceived: 0
+    },
+    {
+      id: "ORD009",
+      orderNumber: "CO-2023-009",
+      shipmentDate: "2023-08-02",
+      shipmentType: "sea",
+      loadType: "FCL",
+      originPort: "ESALG",
+      originCountryCode: "ES",
+      destinationPort: "ITGOA",
+      destinationCountryCode: "IT",
+      status: "pending",
+      quotationsReceived: 3
+    },
+    {
+      id: "ORD010",
+      orderNumber: "CO-2023-010",
+      shipmentDate: "2023-07-28",
+      shipmentType: "air",
+      loadType: "LCL",
+      originPort: "RUBOM",
+      originCountryCode: "RU",
+      destinationPort: "CNPEK",
+      destinationCountryCode: "CN",
+      status: "closed",
+      quotationsReceived: 4
+    }
+  ];
+  
+  export default mockOrders;
