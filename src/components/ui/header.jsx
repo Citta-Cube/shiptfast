@@ -1,7 +1,4 @@
-// @/components/layout/Header.tsx
-import React from 'react'
-import Link from 'next/link'
-import { Menu, Search, CircleUser, Share2 } from 'lucide-react'
+import { Menu, Search, CircleUser } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -22,14 +19,14 @@ const Header = () => {
         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
           <nav className="flex flex-col gap-4">
             {dashboardConfig.sidebarNav.map((item, index) => (
-              <Link
+              <a
                 key={index}
                 href={item.href}
                 className="flex items-center gap-2 text-lg font-medium"
               >
                 {item.icon && <item.icon className="h-5 w-5" />}
                 {item.title}
-              </Link>
+              </a>
             ))}
           </nav>
         </SheetContent>
@@ -48,20 +45,16 @@ const Header = () => {
       </div>
       <nav className="hidden gap-4 md:flex">
         {dashboardConfig.mainNav.map((item, index) => (
-          <Link
+          <a
             key={index}
             href={item.href}
             className={`text-sm font-medium ${item.disabled ? 'cursor-not-allowed opacity-80' : 'hover:text-foreground'}`}
           >
             {item.title}
-          </Link>
+          </a>
         ))}
       </nav>
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Share2 className="h-5 w-5" />
-          <span className="sr-only">Share</span>
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
