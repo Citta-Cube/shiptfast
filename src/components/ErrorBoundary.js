@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -14,31 +14,19 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // You can log the error here
     console.error("Uncaught error:", error, errorInfo);
+    toast.error("An error occurred", {
+      description: "Something went wrong. Please try again later.",
+    });
   }
 
   render() {
     if (this.state.hasError) {
-      return <ErrorFallback />;
+      return null; // We return null because the toast is shown in componentDidCatch
     }
 
     return this.props.children;
   }
-}
-
-function ErrorFallback() {
-  const { toast } = useToast();
-
-  React.useEffect(() => {
-    toast({
-      title: "An error occurred",
-      description: "Something went wrong. Please try again later.",
-      variant: "destructive",
-    });
-  }, [toast]);
-
-  return null;
 }
 
 export default ErrorBoundary;
