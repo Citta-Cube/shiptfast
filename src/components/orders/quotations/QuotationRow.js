@@ -77,20 +77,18 @@ const QuotationRow = ({ quotation, order, onSelectAgent }) => {
         </TableCell>
         <TableCell className="text-right">
           <div className="flex items-center justify-end space-x-2">
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Button variant="ghost" size="sm px-0">
+           {
+            quotation.note ? (
+              <HoverCard>
+                <HoverCardTrigger asChild>
                   <StickyNote className="h-4 w-4" />
-                </Button>
-              </HoverCardTrigger>
-              <HoverCardContent>
-                {quotation.note ? (
+                </HoverCardTrigger>
+                <HoverCardContent>
                   <p className="text-sm">{quotation.note}</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No note available</p>
-                )}
-              </HoverCardContent>
-            </HoverCard>
+                </HoverCardContent>
+              </HoverCard>
+            ) : null
+            }
             <Button
               variant="ghost"
               size="sm"
