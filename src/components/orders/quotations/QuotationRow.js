@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown, StickyNote } from 'lucide-react';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import StarRating from './StarRating';
 import PriceHistoryDialog from './PriceHistoryDialog';
 import { shipmentTypes } from '@/config/shipmentConfig';
@@ -76,9 +77,20 @@ const QuotationRow = ({ quotation, order, onSelectAgent }) => {
         </TableCell>
         <TableCell className="text-right">
           <div className="flex items-center justify-end space-x-2">
-            <Button variant="ghost" size="sm px-0">
-              <StickyNote className="h-4 w-4" />
-            </Button>
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Button variant="ghost" size="sm px-0">
+                  <StickyNote className="h-4 w-4" />
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent>
+                {quotation.note ? (
+                  <p className="text-sm">{quotation.note}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No note available</p>
+                )}
+              </HoverCardContent>
+            </HoverCard>
             <Button
               variant="ghost"
               size="sm"
