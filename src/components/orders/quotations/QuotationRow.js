@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown, StickyNote } from 'lucide-react';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import StarRating from './StarRating';
 import PriceHistoryDialog from './PriceHistoryDialog';
 import { shipmentTypes } from '@/config/shipmentConfig';
@@ -27,6 +27,7 @@ const generatePriceHistory = (currentPrice, agentId) => {
 
 const QuotationRow = ({ quotation, order, onSelectAgent }) => {
   const [expanded, setExpanded] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const priceHistory = generatePriceHistory(quotation.price, quotation.agentId);
   const previousPrice = priceHistory[priceHistory.length - 2].price;
   const priceChange = ((quotation.price - previousPrice) / previousPrice) * 100;
@@ -79,14 +80,17 @@ const QuotationRow = ({ quotation, order, onSelectAgent }) => {
           <div className="flex items-center justify-end space-x-2">
            {
             quotation.note ? (
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <StickyNote className="h-4 w-4" />
-                </HoverCardTrigger>
-                <HoverCardContent>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <StickyNote className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <h3 className="text-lg font-semibold mb-2">Note</h3>
                   <p className="text-sm">{quotation.note}</p>
-                </HoverCardContent>
-              </HoverCard>
+                </DialogContent>
+              </Dialog>
             ) : null
             }
             <Button
