@@ -1,9 +1,12 @@
+// src/app/orders/new/page.js
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import DynamicFormField from "@/components/dynamic-form-field/DynamicFormField";
+import DocumentUploader from '@/components/orders/DocumentUploader';
+import PalletizedCargoDetails from '@/components/orders/PalletizedCargoDetails';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -58,45 +61,7 @@ const FreightForwarderCard = ({ forwarder, isSelected, onSelect }) => {
         </CardContent>
       </Card>
     );
-};    
-
-const DocumentUploader = ({ documents, onUpload, onRemove }) => (
-  <div>
-    <h3 className="text-lg font-semibold mb-4">Upload Documents</h3>
-    <div className="space-y-4">
-      <div className="flex items-center justify-center w-full">
-        <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-opacity-50">
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <Upload className="w-10 h-10 mb-3 text-gray-400" />
-            <p className="mb-2 text-sm text-gray-500"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-            <p className="text-xs text-gray-500">PDF, PNG, JPG or DOCX (MAX. 10MB)</p>
-          </div>
-          <input id="dropzone-file" type="file" className="hidden" multiple onChange={onUpload} />
-        </label>
-      </div>
-      {documents.length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-md font-semibold mb-2">Uploaded Documents:</h4>
-          <ul className="space-y-2">
-            {documents.map((file, index) => (
-              <li key={index} className="flex items-center justify-between p-2 bg-gray-100 rounded">
-                <span className="text-sm truncate">{file.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRemove(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  </div>
-);
+}; 
 
 
 // Main component
@@ -118,7 +83,8 @@ const NewOrderPage = () => {
     cargoCBM: '',
     deliveryAddress: '',
     selectedForwarders: [],
-    documents: []
+    documents: [],
+    palletizedCargo: null,
   });
 
 
@@ -131,6 +97,15 @@ const NewOrderPage = () => {
     console.log(orderData);
     // Submit order data to API and handle response
   };
+
+  const handlePalletizedCargoChange = useCallback((palletizedCargoData) => {
+    setOrderData(prevData => ({
+      ...prevData,
+      palletizedCargo: palletizedCargoData,
+      grossWeight: palletizedCargoData.totalGrossWeight,
+      chargeableWeight: palletizedCargoData.totalChargeableWeight
+    }));
+  }, []);
 
   // Mock data for ports and freight forwarders (in a real app, fetch from API)
   const ports = [
@@ -198,13 +173,22 @@ const NewOrderPage = () => {
         }
       },
       { id: 'incoterm', label: 'Incoterm', type: 'select', options: [
-        { value: "EXW", label: "EXW" },
         { value: "FOB", label: "FOB" },
+        { value: "CFR", label: "CFR" },
         { value: "CIF", label: "CIF" },
+        { value: "CIP", label: "CIP" },
+        { value: "DPU", label: "DPU" },
         { value: "DAP", label: "DAP" },
         { value: "DDP", label: "DDP" },
       ]},
       { id: 'cargoReadyDate', label: 'Cargo Ready Date', type: 'date' },
+      { id: 'quotationDeadline', label: 'Quotation Deadline', type: 'date' },
+      { 
+        id: 'isUrgent', 
+        label: 'Mark as Urgent', 
+        type: 'checkbox',
+        description: 'Will notify all selected forwarders immediately'
+      },
     ]},
     { section: 'Port Selection', fields: [
       { id: 'originPort', label: 'Origin Port', type: 'portSelect', ports: ports },
@@ -215,9 +199,10 @@ const NewOrderPage = () => {
             { value: "loose", label: "Loose" },
             { value: "palletised", label: "Palletised" },
         ], showIf: { shipmentType: 'air' } },
-        { id: 'grossWeight', label: 'Gross Weight (kg)', type: 'input', inputType: 'number', showIf: { shipmentType: 'air' } },
-        { id: 'chargeableWeight', label: 'Chargeable Weight (kg)', type: 'input', inputType: 'number', showIf: { shipmentType: 'air' } },
-        { id: 'dimensions', label: 'Dimensions (LxWxH)', type: 'input', placeholder: 'e.g., 100x80x120', showIf: { shipmentType: 'air' } },
+        { id: 'grossWeight', label: 'Gross Weight (kg)', type: 'input', inputType: 'number', showIf: { shipmentType: 'air', cargoType: 'loose' } },
+        { id: 'chargeableWeight', label: 'Chargeable Weight (kg)', type: 'input', inputType: 'number', showIf: { shipmentType: 'air', cargoType: 'loose' } },
+        { id: 'hsCode', label: 'HS Code', type: 'input', placeholder: 'Enter HS Code', showIf: { cargoType: 'loose', incoterm: ['DDP', 'DAP', 'CPT', 'CIP', 'DPU'] }},
+        { id: 'mcQuantity', label: 'Master Case Quantity', type: 'input', inputType: 'number', showIf: { cargoType: 'loose' } },
         { id: 'containerType', label: 'Container Type', type: 'select', options: [
             { value: "20", label: "20'" },
             { value: "40", label: "40'" },
@@ -225,9 +210,22 @@ const NewOrderPage = () => {
         ], showIf: { shipmentType: 'sea', loadType: 'FCL' } },
         { id: 'palletCBM', label: 'Pallet CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'sea', loadType: 'LCL' } },
         { id: 'cargoCBM', label: 'Cargo CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'sea', loadType: 'LCL' } },
-        { id: 'deliveryAddress', label: 'Delivery Address', type: 'textarea', placeholder: 'Enter delivery address' },
+        { id: 'deliveryAddress', label: 'Delivery Address', type: 'textarea', placeholder: 'Enter delivery address', showIf: { incoterm: ['DDP', 'DAP', 'CPT', 'CIP', 'DPU'] } },
     ]},
   ];
+
+  useEffect(() => {
+    if (orderData.shipmentType) {
+      const relevantForwarders = freightForwarders
+        .filter(ff => ff.services.includes(orderData.shipmentType))
+        .map(ff => ff.id);
+      setOrderData(prevData => ({
+        ...prevData,
+        selectedForwarders: relevantForwarders
+      }));
+    }
+  }, [orderData.shipmentType]);
+
 
   // Render form sections based on configuration
   const renderFormSections = () => {
@@ -238,7 +236,15 @@ const NewOrderPage = () => {
           {section.fields.map((field) => {
             // Check if the field should be shown based on dependencies
             const shouldShow = !field.showIf || Object.entries(field.showIf).every(
-              ([key, value]) => orderData[key] === value
+              ([key, value]) => {
+                if (Array.isArray(value)) {
+                  // If the showIf value is an array, check if the current value is in the array
+                  return value.includes(orderData[key]);
+                } else {
+                  // Otherwise, check for an exact match
+                  return orderData[key] === value;
+                }
+              }
             );
 
             if (!shouldShow) return null;
@@ -260,15 +266,19 @@ const NewOrderPage = () => {
             );
           })}
         </div>
+        {section.section === 'Shipment Details' && 
+         orderData.shipmentType === 'air' && 
+         orderData.cargoType === 'palletised' && (
+          <PalletizedCargoDetails onChange={handlePalletizedCargoChange} />
+        )}
       </div>
     ));
   };
 
-  const handleDocumentUpload = (e) => {
-    const files = Array.from(e.target.files);
+  const handleDocumentUpload = (documentData) => {
     setOrderData(prevData => ({
       ...prevData,
-      documents: [...prevData.documents, ...files]
+      documents: [...prevData.documents, documentData]
     }));
   };
 
@@ -290,8 +300,6 @@ const NewOrderPage = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-8">
             {renderFormSections()}
-
-            {/* Freight Forwarder Selection Section */}
             <div>
               <h3 className="text-lg font-semibold mb-4">Select Freight Forwarders</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

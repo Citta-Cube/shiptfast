@@ -1,4 +1,4 @@
-// components/dynamic-form-field/DynamicFormField.js
+// src/components/dynamic-form-field/DynamicFormField.js
 import React from 'react';
 import InputField from './InputField';
 import SelectField from './SelectField';
@@ -6,6 +6,7 @@ import DatePickerField from './DatePickerField';
 import PortSelect from './PortSelect';
 import TextareaField from './TextareaField';
 import SelectWithIconsField from './SelectWithIconsField';
+import CheckboxField from './CheckboxField';
 
 const DynamicFormField = ({ field, value, onChange, dependentFields }) => {
   switch (field.type) {
@@ -21,6 +22,8 @@ const DynamicFormField = ({ field, value, onChange, dependentFields }) => {
       return <PortSelect {...field} value={value} onChange={onChange} />;
     case 'textarea':
       return <TextareaField {...field} value={value} onChange={onChange} />;
+    case 'checkbox':
+      return <CheckboxField {...field} checked={value} onCheckedChange={(checked) => onChange(field.id, checked)} />;
     default:
       return null;
   }
