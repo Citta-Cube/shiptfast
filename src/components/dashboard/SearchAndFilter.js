@@ -1,18 +1,18 @@
-// src/components/dashboard/SearchAndFilter.js
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onFilterStatus, onSort }) => {
+const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onFilterStatus, onSort, activeFilters }) => {
   return (
     <div className="mb-6 flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0">
       <Input
         type="search"
         placeholder="Search by Order Number..."
         onChange={(e) => onSearch(e.target.value)}
+        value={activeFilters.searchTerm}
         className="md:w-1/4"
       />
-      <Select onValueChange={onFilterShipmentType}>
+      <Select value={activeFilters.shipmentType} onValueChange={onFilterShipmentType}>
         <SelectTrigger className="md:w-1/5">
           <SelectValue placeholder="Shipment Type" />
         </SelectTrigger>
@@ -22,7 +22,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectItem value="air">Air Freight</SelectItem>
         </SelectContent>
       </Select>
-      <Select onValueChange={onFilterLoadType}>
+      <Select value={activeFilters.loadType} onValueChange={onFilterLoadType}>
         <SelectTrigger className="md:w-1/5">
           <SelectValue placeholder="Load Type" />
         </SelectTrigger>
@@ -32,7 +32,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectItem value="LCL">LCL</SelectItem>
         </SelectContent>
       </Select>
-      <Select onValueChange={onFilterStatus}>
+      <Select value={activeFilters.status} onValueChange={onFilterStatus}>
         <SelectTrigger className="md:w-1/5">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
@@ -43,7 +43,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectItem value="closed">Closed</SelectItem>
         </SelectContent>
       </Select>
-      <Select onValueChange={onSort}>
+      <Select value={activeFilters.sortBy} onValueChange={onSort}>
         <SelectTrigger className="md:w-1/5">
           <SelectValue placeholder="Sort By" />
         </SelectTrigger>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Ship, Plane, Package, Box, Container } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import UrgentIndicator from './UrgentIndicator';
 import Link from 'next/link';
 
 const ShipmentTypeIcon = ({ type }) => {
@@ -36,7 +37,10 @@ const OrderCard = ({ order }) => {
         <CardTitle className="text-sm font-medium">
           Order #{order.orderNumber}
         </CardTitle>
-        <StatusBadge status={order.status} />
+        <div className="flex items-center space-x-2">
+          {order.isUrgent && <UrgentIndicator />}
+          <StatusBadge status={order.status} />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4">

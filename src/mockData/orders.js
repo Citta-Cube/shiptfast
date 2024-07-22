@@ -3,6 +3,7 @@
 const mockOrders = [
     {
       id: "ORD001",
+      isUrgent: true,
       orderNumber: "CO-2023-001",
       shipmentDate: "2023-07-15",
       shipmentType: "sea",
@@ -57,6 +58,7 @@ const mockOrders = [
     },
     {
       id: "ORD005",
+      isUrgent: true,
       orderNumber: "CO-2023-005",
       shipmentDate: "2023-07-18",
       shipmentType: "sea",
@@ -111,6 +113,7 @@ const mockOrders = [
     },
     {
       id: "ORD009",
+      isUrgent: true,
       orderNumber: "CO-2023-009",
       shipmentDate: "2023-08-02",
       shipmentType: "sea",
