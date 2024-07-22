@@ -35,7 +35,8 @@ export const mockOrders = [
         vessel: 'Emma Maersk',
         netFreight: 2000,
         DTHC: 300,
-        freeTime: '7 days'
+        freeTime: '7 days',
+        note: "Vessel is currently at port in Shanghai. Expected departure"
       },
       {
         agentId: 'agent2',
@@ -93,7 +94,8 @@ export const mockOrders = [
         ],
         airline: 'Lufthansa',
         AWB: 'AWB123456',
-        HAWB: 'HAWB789012'
+        HAWB: 'HAWB789012',
+        note: "Cargo is currently at HKHKG airport. Expected departure"
       },
       {
         agentId: 'agent4',
