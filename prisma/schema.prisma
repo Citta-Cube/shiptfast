@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,45 +8,209 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  password       String
-  role           Role     @default(USER)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  company        Company? @relation(fields: [companyId], references: [id])
-  companyId      String?
-  freightForwarder FreightForwarder? @relation(fields: [freightForwarderId], references: [id])
-  freightForwarderId String?
+  id                String              @id @default(uuid())
+  email             String              @unique
+  name              String
+  phone             String?
+  role              UserRole
+  isPrimaryContact  Boolean             @default(false)
+  company           Company             @relation(fields: [companyId], references: [id])
+  companyId         String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  documents         Document[]
+  orderNotifications OrderNotification[]
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
 }
 
 model Company {
-  id          String   @id @default(cuid())
-  name        String
-  address     String
-  description String?
-  industry    String
-  brNumber    String   @unique
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
+  id                String              @id @default(uuid())
+  name              String
+  icon              String?
+  email             String
+  phone             String?
+  website           String?
+  description       String?
+  type              CompanyType
+  users             User[]
+  documents         Document[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  freightForwarder  FreightForwarder?
+  exporter          Exporter?
+  orders            Order[]             // For exporters
+  quotes            Quote[]             // For freight forwarders
+  companyStatuses   CompanyStatus[]
+  statusesGiven     CompanyStatus[]     @relation("StatusGiver")
+}
+
+enum CompanyType {
+  FREIGHT_FORWARDER
+  EXPORTER
 }
 
 model FreightForwarder {
-  id          String   @id @default(cuid())
-  name        String
-  address     String
-  description String?
-  brNumber    String   @unique
-  customFields Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
+  id                String        @id @default(uuid())
+  company           Company       @relation(fields: [companyId], references: [id])
+  companyId         String        @unique
+  services          Service[]
+  sVATNumber        String?
+  bRNumber          String?
+  isVerified        Boolean       @default(false)
+  rating            Float?
+  ordersClosedCount Int           @default(0)
 }
 
-enum Role {
-  ADMIN
-  FREIGHT_FORWARDER
-  COMPANY_MANAGER
-  COMPANY_USER
+model Exporter {
+  id                String        @id @default(uuid())
+  company           Company       @relation(fields: [companyId], references: [id])
+  companyId         String        @unique
+}
+
+enum Service {
+  SEA
+  AIR
+}
+
+model CompanyStatus {
+  id                String        @id @default(uuid())
+  company           Company       @relation(fields: [companyId], references: [id])
+  companyId         String
+  statusBy          Company       @relation("StatusGiver", fields: [statusById], references: [id])
+  statusById        String
+  status            Status
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([companyId, statusById])
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+model Document {
+  id                String        @id @default(uuid())
+  title             String
+  description       String?
+  fileUrl           String
+  uploadedBy        User          @relation(fields: [uploadedById], references: [id])
+  uploadedById      String
+  company           Company       @relation(fields: [companyId], references: [id])
+  companyId         String
+  order             Order?        @relation(fields: [orderId], references: [id])
+  orderId           String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Port {
+  id                String        @id @default(uuid())
+  portCode          String        @unique
+  name              String
+  countryCode       String
+  service           Service
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  originOrders      Order[]       @relation("OriginPort")
+  destinationOrders Order[]       @relation("DestinationPort")
+  transshipmentPorts TransshipmentPort[]
+}
+
+model Order {
+  id                String        @id @default(uuid())
+  referenceNumber   String        @unique
+  systemNumber      String        @unique @default(uuid())
+  exporter          Company       @relation(fields: [exporterId], references: [id])
+  exporterId        String
+  shipmentType      Service
+  loadType          LoadType
+  incoterm          Incoterm
+  cargoReadyDate    DateTime
+  quotationDeadline DateTime
+  isUrgent          Boolean       @default(false)
+  originPort        Port          @relation("OriginPort", fields: [originPortId], references: [id])
+  originPortId      String
+  destinationPort   Port          @relation("DestinationPort", fields: [destinationPortId], references: [id])
+  destinationPortId String
+  status            OrderStatus   @default(OPEN)
+  documents         Document[]
+  quotes            Quote[]
+  orderDetails      Json          // Flexible field for dynamic order details
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  orderNotifications OrderNotification[]
+}
+
+enum LoadType {
+  FCL
+  LCL
+}
+
+enum Incoterm {
+  FOB
+  CIF
+  CFR
+  CIP
+  DPU
+  DDP
+  DAP
+}
+
+enum OrderStatus {
+  OPEN
+  PENDING
+  CLOSED
+  CANCELLED
+}
+
+model Quote {
+  id                String        @id @default(uuid())
+  order             Order         @relation(fields: [orderId], references: [id])
+  orderId           String
+  freightForwarder  Company       @relation(fields: [freightForwarderId], references: [id])
+  freightForwarderId String
+  netFreightCost    Float
+  estimatedTimeDays Int
+  validityPeriod    Int?
+  note              String?
+  quoteDetails      Json          // Flexible field for quote-specific details
+  transshipmentPorts TransshipmentPort[]
+  amendments        QuoteAmendment[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model TransshipmentPort {
+  id                String        @id @default(uuid())
+  quote             Quote         @relation(fields: [quoteId], references: [id])
+  quoteId           String
+  port              Port          @relation(fields: [portId], references: [id])
+  portId            String
+  order             Int
+}
+
+model QuoteAmendment {
+  id                String        @id @default(uuid())
+  quote             Quote         @relation(fields: [quoteId], references: [id])
+  quoteId           String
+  previousDetails   Json
+  newDetails        Json
+  createdAt         DateTime      @default(now())
+}
+
+model OrderNotification {
+  id                String        @id @default(uuid())
+  order             Order         @relation(fields: [orderId], references: [id])
+  orderId           String
+  sender            User          @relation(fields: [senderId], references: [id])
+  senderId          String
+  message           String
+  createdAt         DateTime      @default(now())
 }
