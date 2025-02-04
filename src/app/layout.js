@@ -32,9 +32,9 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-          <ErrorBoundary>
-            {children}
-          </ErrorBoundary>
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           <Toaster />
         </ThemeProvider>
       </body>

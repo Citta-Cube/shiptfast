@@ -8,18 +8,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Grid, List } from 'lucide-react';
 
-const DashboardContent = () => {
+const DashboardContent = ({ initialFilters = {} }) => {
     const [orders, setOrders] = useState([]);
     const [filteredOrders, setFilteredOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('grid');
     const [activeFilters, setActiveFilters] = useState({
-      searchTerm: '',
-      shipmentType: 'all',
-      loadType: 'all',
-      status: 'all',
-      sortBy: ''
+        searchTerm: '',
+        shipmentType: initialFilters.shipmentType || 'all',
+        loadType: initialFilters.loadType || 'all',
+        status: initialFilters.status || 'all',
+        sortBy: initialFilters.sortBy || ''
     });
 
     useEffect(() => {
@@ -29,6 +29,25 @@ const DashboardContent = () => {
     useEffect(() => {
         applyFilters();
     }, [orders, activeFilters]);
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams();
+        
+        if (activeFilters.shipmentType !== 'all') 
+            queryParams.set('shipmentType', activeFilters.shipmentType);
+        if (activeFilters.loadType !== 'all') 
+            queryParams.set('loadType', activeFilters.loadType);
+        if (activeFilters.status !== 'all') 
+            queryParams.set('status', activeFilters.status);
+        if (activeFilters.sortBy) 
+            queryParams.set('sortBy', activeFilters.sortBy);
+
+        const newUrl = queryParams.toString()
+            ? `${window.location.pathname}?${queryParams.toString()}`
+            : window.location.pathname;
+            
+        window.history.replaceState({}, '', newUrl);
+    }, [activeFilters]);
 
     const fetchOrders = async () => {
         setIsLoading(true);
@@ -59,17 +78,17 @@ const DashboardContent = () => {
 
         // Apply shipment type filter
         if (activeFilters.shipmentType !== 'all') {
-            result = result.filter(order => order.shipmentType === activeFilters.shipmentType);
+            result = result.filter(order => order.shipment_type.toLowerCase() === activeFilters.shipmentType);
         }
 
         // Apply load type filter
         if (activeFilters.loadType !== 'all') {
-            result = result.filter(order => order.loadType === activeFilters.loadType);
+            result = result.filter(order => order.load_type.toLowerCase() === activeFilters.loadType);
         }
 
         // Apply status filter
         if (activeFilters.status !== 'all') {
-            result = result.filter(order => order.status === activeFilters.status);
+            result = result.filter(order => order.status.toLowerCase() === activeFilters.status);
         }
 
         // Apply sorting

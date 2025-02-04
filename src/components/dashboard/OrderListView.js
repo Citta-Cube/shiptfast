@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Ship, Plane, Package, Box, Container } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
 import Link from 'next/link';
 
 const ShipmentTypeIcon = ({ type }) => {
@@ -46,32 +47,32 @@ const OrderListView = ({ orders }) => {
       <TableBody>
         {orders.map((order) => (
           <TableRow key={order.id} className={order.isUrgent ? 'bg-red-600 bg-opacity-20' : ''}>
-            <TableCell>{order.orderNumber}</TableCell>
+            <TableCell>{order.reference_number}</TableCell>
             <TableCell><StatusBadge status={order.status} /></TableCell>
-            <TableCell>{order.shipmentDate}</TableCell>
+            <TableCell>{formatDate(order.cargo_ready_date)}</TableCell>
             <TableCell>
               <div className="flex items-center space-x-2">
-                <ShipmentTypeIcon type={order.shipmentType} />
-                <LoadTypeIcon type={order.loadType} />
-                <span>{order.shipmentType.toUpperCase()} - {order.loadType}</span>
+                <ShipmentTypeIcon type={order.shipment_type} />
+                <LoadTypeIcon type={order.load_type} />
+                <span>{order.shipment_type.toUpperCase()} - {order.load_type}</span>
               </div>
             </TableCell>
             <TableCell>
               <div className="flex items-center space-x-2">
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src={`https://flagcdn.com/w20/${order.originCountryCode.toLowerCase()}.png`} />
-                  <AvatarFallback>{order.originCountryCode}</AvatarFallback>
+                  <AvatarImage src={`https://flagcdn.com/w20/${order.origin_port.country_code.toLowerCase()}.png`} />
+                  <AvatarFallback>{order.destination_port.country_code}</AvatarFallback>
                 </Avatar>
-                <span>{order.originPort}</span>
+                <span>{order.origin_port.port_code}</span>
                 <span>→</span>
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src={`https://flagcdn.com/w20/${order.destinationCountryCode.toLowerCase()}.png`} />
-                  <AvatarFallback>{order.destinationCountryCode}</AvatarFallback>
+                  <AvatarImage src={`https://flagcdn.com/w20/${order.destination_port.country_code.toLowerCase()}.png`} />
+                  <AvatarFallback>{order.destination_port.country_code}</AvatarFallback>
                 </Avatar>
-                <span>{order.destinationPort}</span>
+                <span>{order.destination_port.port_code}</span>
               </div>
             </TableCell>
-            <TableCell>{order.status === 'open' ? order.timeLeft : '-'}</TableCell>
+            <TableCell>{order.status === 'OPEN' ? calculateTimeLeft(order.quotation_deadline) : '-'}</TableCell>
             <TableCell>{order.quotationsReceived}</TableCell>
             <TableCell>
               <Link href={`/orders/${order.id}`} passHref>

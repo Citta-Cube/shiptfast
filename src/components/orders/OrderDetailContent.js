@@ -24,7 +24,7 @@ const fetchHistoricalData = (startPort, endPort) => {
   });
 };
 
-const OrderDetailContent = ({ order }) => {
+const OrderDetailContent = ({ order, documents, quotes }) => {
   const [currentOrder, setCurrentOrder] = useState(order);
   const [historicalData, setHistoricalData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +33,7 @@ const OrderDetailContent = ({ order }) => {
     const loadHistoricalData = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchHistoricalData(order.originPort, order.destinationPort);
+        const data = await fetchHistoricalData(order.origin_port?.country_code, order.destination_port?.country_code);
         // const response = await fetch(`/api/historical-pricing?startPort=${order.originPort}&endPort=${order.destinationPort}`);
         setHistoricalData(data);
       } catch (error) {
@@ -44,7 +44,7 @@ const OrderDetailContent = ({ order }) => {
     };
 
     loadHistoricalData();
-  }, [order.originPort, order.destinationPort]);
+  }, [order?.origin_port?.country_code, order?.destination_port?.country_code]);
 
   const handleCancelOrder = async () => {
     // API call to cancel order
@@ -72,27 +72,31 @@ const OrderDetailContent = ({ order }) => {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Order #{currentOrder.orderNumber}</h1>
-        <TimelineSheet 
+        <div>
+          <h1 className="text-3xl font-bold">Order {currentOrder.reference_number}</h1>
+          <p className="text-sm text-muted-foreground">ID: {currentOrder.id}</p>
+        </div>
+        {/* <TimelineSheet 
           events={currentOrder.timeline} 
           onPublishMessage={handlePublishMessage}
-        />
+        /> */}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <OrderSummary order={currentOrder} onCancelOrder={handleCancelOrder} />
-        <DocumentSection documents={currentOrder.documents} orderId={currentOrder.id} />
+        <OrderSummary order={order} onCancelOrder={handleCancelOrder} />
+        <DocumentSection documents={documents} orderId={currentOrder.id} showUpload={true}/>
         <QuotationSection 
-          order={currentOrder}
+          order={order}
+          quotes={quotes}
           onSelectAgent={handleSelectAgent}
         />
-        <HistoricalPricingChart
+        {/* <HistoricalPricingChart
           historicalData={historicalData}
           currentBestQuote={getCurrentBestQuote()}
           startPort={{ name: currentOrder.originPort, countryCode: currentOrder.originCountryCode }}
           endPort={{ name: currentOrder.destinationPort, countryCode: currentOrder.destinationCountryCode }}
           isLoading={isLoading}
-        />
+        /> */}
       </div>
     </div>
   );

@@ -7,62 +7,10 @@ import { Button } from "@/components/ui/button";
 import DynamicFormField from "@/components/dynamic-form-field/DynamicFormField";
 import DocumentUploader from '@/components/orders/DocumentUploader';
 import PalletizedCargoDetails from '@/components/orders/PalletizedCargoDetails';
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar as CalendarIcon, Star, Upload, X, CheckCircle, Plane, Ship, Box, Boxes, Container } from 'lucide-react';
-
-
-const FreightForwarderCard = ({ forwarder, isSelected, onSelect }) => {
-    return (
-      <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-3 mb-2">
-            <Checkbox
-              id={`ff-${forwarder.id}`}
-              checked={isSelected}
-              onCheckedChange={onSelect}
-              className="h-5 w-5"
-            />
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={forwarder.logo} alt={forwarder.name} />
-              <AvatarFallback>{forwarder.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-grow">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold truncate mr-2">{forwarder.name}</h3>
-                <div className="flex items-center space-x-1">
-                  <span className="text-sm font-medium">{forwarder.rating.toFixed(1)}</span>
-                  <Star className="h-4 w-4 text-yellow-400" />
-                  {forwarder.isVerified && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <CheckCircle className="h-4 w-4 text-blue-500" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Verified Forwarder</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {forwarder.services.map(service => (
-                  <Badge key={service} variant="secondary" className="capitalize text-xs px-2 py-0.5">
-                    {service}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-}; 
-
+import { formConfig } from '@/config/orderFormConfig';
+import { toast } from "sonner";
+import { useRouter } from 'next/navigation';
+import { FreightForwarderCard, FreightForwarderCardSkeleton } from '@/components/orders/create/FreightForwarderCard';
 
 // Main component
 const NewOrderPage = () => {
@@ -72,6 +20,8 @@ const NewOrderPage = () => {
     loadType: '',
     incoterm: '',
     cargoReadyDate: null,
+    quotationDeadline: null,
+    isUrgent: false,
     originPort: '',
     destinationPort: '',
     grossWeight: '',
@@ -85,17 +35,115 @@ const NewOrderPage = () => {
     selectedForwarders: [],
     documents: [],
     palletizedCargo: null,
+    exporterId: 'e0912188-4fbd-415e-b5a7-19b35cfbab42'
   });
+  const [freightForwarders, setFreightForwarders] = useState([]);
+  const [isLoadingForwarders, setIsLoadingForwarders] = useState(false);
 
+  const router = useRouter();
 
   const handleInputChange = (field, value) => {
+    if (field === 'isUrgent') {
+      setOrderData(prevData => ({ 
+        ...prevData, 
+        [field]: value 
+      }));
+      return;
+    }
+
+    if (field === 'quotationDeadline' || field === 'cargoReadyDate') {
+      setOrderData(prevData => ({ 
+        ...prevData, 
+        [field]: value ? new Date(value) : null 
+      }));
+      return;
+    }
+
     setOrderData(prevData => ({ ...prevData, [field]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(orderData);
-    // Submit order data to API and handle response
+    const formData = new FormData();
+
+    try {
+      const orderDetails = {};
+      if (orderData.shipmentType === 'AIR') {
+        if (orderData.cargoType === 'loose') {
+          orderDetails.grossWeight = orderData.grossWeight;
+          orderDetails.chargeableWeight = orderData.chargeableWeight;
+        } else if (orderData.cargoType === 'palletised') {
+          orderDetails.palletizedCargo = orderData.palletizedCargo;
+        }
+      } else if (orderData.shipmentType === 'SEA') {
+        if (orderData.loadType === 'FCL') {
+          orderDetails.containerType = orderData.containerType;
+        } else if (orderData.loadType === 'LCL') {
+          orderDetails.palletCBM = orderData.palletCBM;
+          orderDetails.cargoCBM = orderData.cargoCBM;
+        }
+      }
+
+      // Add common fields
+      if (orderData.dimensions) orderDetails.dimensions = orderData.dimensions;
+      if (orderData.cargoType) orderDetails.cargoType = orderData.cargoType;
+      if (['DDP', 'DAP', 'CPT', 'CIP', 'DPU'].includes(orderData.incoterm)) {
+        orderDetails.deliveryAddress = orderData.deliveryAddress;
+      }
+
+      // Update the orderData structure to match the API expectations
+      formData.append('orderData', JSON.stringify({
+        reference_number: orderData.orderNumber,
+        exporter_id: 'e0912188-4fbd-415e-b5a7-19b35cfbab42', // Make sure this is available from user context
+        shipment_type: orderData.shipmentType,
+        load_type: orderData.loadType,
+        incoterm: orderData.incoterm,
+        cargo_ready_date: orderData.cargoReadyDate,
+        quotation_deadline: orderData.quotationDeadline,
+        is_urgent: orderData.isUrgent || false,
+        origin_port_id: orderData.originPort,
+        destination_port_id: orderData.destinationPort,
+        order_details: orderDetails
+      }));
+
+      formData.append('selectedForwarderIds', JSON.stringify(orderData.selectedForwarders));
+
+      // Update document handling
+      const documentMetadata = orderData.documents.map(doc => ({
+        title: doc.title,
+        description: doc.description || '',
+        metadata: doc.metadata || {}
+      }));
+
+      orderData.documents.forEach((doc, index) => {
+        formData.append('documents', doc.file);
+      });
+      formData.append('documentMetadata', JSON.stringify(documentMetadata));
+
+      toast.promise(
+        fetch('/api/orders/new', {
+          method: 'POST',
+          body: formData,
+        }), 
+        {
+          loading: 'Creating order...',
+          success: async (response) => {
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to create order');
+            }
+            const result = await response.json();
+            const order = result.data.order;
+            router.push(`/orders/${order.id}`);
+            return `Order successfully created with ID: ${order.id}`;
+          },
+          error: (error) => error.message || "Failed to create order. Please try again."
+        }
+      );
+    } catch (error) {
+      console.error('Error creating order:', error);
+      toast.error(error.message || "Failed to create order");
+    }
   };
 
   const handlePalletizedCargoChange = useCallback((palletizedCargoData) => {
@@ -107,129 +155,36 @@ const NewOrderPage = () => {
     }));
   }, []);
 
-  // Mock data for ports and freight forwarders (in a real app, fetch from API)
-  const ports = [
-    { code: "CNSHA", name: "Shanghai", country: "China", countryCode: "CN" },
-    { code: "USLA", name: "Los Angeles", country: "United States", countryCode: "US" },
-  ];
-
-  const freightForwarders = [
-    { id: 1, name: "Global Logistics", rating: 4.5, services: ["air", "sea"], isVerified: true },
-    { id: 2, name: "SeaWay Express", rating: 4.2, services: ["sea"], isVerified: false },
-    { id: 3, name: "AirCargo Solutions", rating: 4.8, services: ["air"], isVerified: true },
-  ];
-
-  // Configuration for form fields
-  const formConfig = [
-    { section: 'Basic Info', fields: [
-      { id: 'orderNumber', label: 'Order Number', type: 'input', placeholder: 'Enter order number' },
-      { 
-        id: 'shipmentType', 
-        label: 'Shipment Type', 
-        type: 'selectWithIcons', 
-        options: [
-          { 
-            value: "air", 
-            label: "Air Freight", 
-            icon: <Plane className="size-5" />,
-            description: "Fast shipping for time-sensitive cargo"
-          },
-          { 
-            value: "sea", 
-            label: "Sea Freight", 
-            icon: <Ship className="size-5" />,
-            description: "Cost-effective for large volume shipments"
-          },
-        ]
-      },
-      { 
-        id: 'loadType', 
-        label: 'Load Type', 
-        type: 'selectWithIcons', 
-        dependsOn: 'shipmentType', 
-        options: {
-          'sea': [
-            { 
-              value: "FCL", 
-              label: "Full Container Load (FCL)", 
-              icon: <Container className="size-5" />,
-              description: "Exclusive use of an entire container"
-            },
-            { 
-              value: "LCL", 
-              label: "Less than Container Load (LCL)", 
-              icon: <Boxes className="size-5" />,
-              description: "Share container space with other shipments"
-            },
-          ],
-          'air': [
-            { 
-              value: "LCL", 
-              label: "Less than Container Load (LCL)", 
-              icon: <Boxes className="size-5" />,
-              description: "Partial use of aircraft cargo space"
-            }
-          ]
-        }
-      },
-      { id: 'incoterm', label: 'Incoterm', type: 'select', options: [
-        { value: "FOB", label: "FOB" },
-        { value: "CFR", label: "CFR" },
-        { value: "CIF", label: "CIF" },
-        { value: "CIP", label: "CIP" },
-        { value: "DPU", label: "DPU" },
-        { value: "DAP", label: "DAP" },
-        { value: "DDP", label: "DDP" },
-      ]},
-      { id: 'cargoReadyDate', label: 'Cargo Ready Date', type: 'date' },
-      { id: 'quotationDeadline', label: 'Quotation Deadline', type: 'date' },
-      { 
-        id: 'isUrgent', 
-        label: 'Mark as Urgent', 
-        type: 'checkbox',
-        description: 'Will notify all selected forwarders immediately'
-      },
-    ]},
-    { section: 'Port Selection', fields: [
-      { id: 'originPort', label: 'Origin Port', type: 'portSelect', ports: ports },
-      { id: 'destinationPort', label: 'Destination Port', type: 'portSelect', ports: ports },
-    ]},
-    { section: 'Shipment Details', fields: [
-        { id: 'cargoType', label: 'Cargo Type', type: 'select', options: [
-            { value: "loose", label: "Loose" },
-            { value: "palletised", label: "Palletised" },
-        ], showIf: { shipmentType: 'air' } },
-        { id: 'grossWeight', label: 'Gross Weight (kg)', type: 'input', inputType: 'number', showIf: { shipmentType: 'air', cargoType: 'loose' } },
-        { id: 'chargeableWeight', label: 'Chargeable Weight (kg)', type: 'input', inputType: 'number', showIf: { shipmentType: 'air', cargoType: 'loose' } },
-        { id: 'hsCode', label: 'HS Code', type: 'input', placeholder: 'Enter HS Code', showIf: { cargoType: 'loose', incoterm: ['DDP', 'DAP', 'CPT', 'CIP', 'DPU'] }},
-        { id: 'mcQuantity', label: 'Master Case Quantity', type: 'input', inputType: 'number', showIf: { cargoType: 'loose' } },
-        { id: 'containerType', label: 'Container Type', type: 'select', options: [
-            { value: "20", label: "20'" },
-            { value: "40", label: "40'" },
-            { value: "40HC", label: "40' HC" },
-        ], showIf: { shipmentType: 'sea', loadType: 'FCL' } },
-        { id: 'palletCBM', label: 'Pallet CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'sea', loadType: 'LCL' } },
-        { id: 'cargoCBM', label: 'Cargo CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'sea', loadType: 'LCL' } },
-        { id: 'deliveryAddress', label: 'Delivery Address', type: 'textarea', placeholder: 'Enter delivery address', showIf: { incoterm: ['DDP', 'DAP', 'CPT', 'CIP', 'DPU'] } },
-    ]},
-  ];
+  const fetchFreightForwarders = useCallback(async (shipmentType) => {
+    try {
+      setIsLoadingForwarders(true);
+      const params = new URLSearchParams({
+        status: 'ACTIVE',
+        services: shipmentType || '',
+      });
+      
+      const response = await fetch(`/api/freight-forwarders?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch forwarders');
+      
+      const data = await response.json();
+      setFreightForwarders(data);
+    } catch (error) {
+      console.error('Error fetching freight forwarders:', error);
+      toast.error("Failed to load freight forwarders");
+    } finally {
+      setIsLoadingForwarders(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (orderData.shipmentType) {
-      const relevantForwarders = freightForwarders
-        .filter(ff => ff.services.includes(orderData.shipmentType))
-        .map(ff => ff.id);
-      setOrderData(prevData => ({
-        ...prevData,
-        selectedForwarders: relevantForwarders
-      }));
+      fetchFreightForwarders(orderData.shipmentType);
     }
-  }, [orderData.shipmentType]);
-
+  }, [orderData.shipmentType, fetchFreightForwarders]);
 
   // Render form sections based on configuration
   const renderFormSections = () => {
-    return formConfig.map((section, index) => (
+    return formConfig({ orderData }).map((section, index) => (
       <div key={index} className="space-y-6">
         <h3 className="text-lg font-semibold">{section.section}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -267,7 +222,7 @@ const NewOrderPage = () => {
           })}
         </div>
         {section.section === 'Shipment Details' && 
-         orderData.shipmentType === 'air' && 
+         orderData.shipmentType === 'AIR' && 
          orderData.cargoType === 'palletised' && (
           <PalletizedCargoDetails onChange={handlePalletizedCargoChange} />
         )}
@@ -302,10 +257,15 @@ const NewOrderPage = () => {
             {renderFormSections()}
             <div>
               <h3 className="text-lg font-semibold mb-4">Select Freight Forwarders</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {freightForwarders
-                  .filter(ff => ff.services.includes(orderData.shipmentType))
-                  .map((forwarder) => (
+              {isLoadingForwarders ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <FreightForwarderCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : freightForwarders.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {freightForwarders.map((forwarder) => (
                     <FreightForwarderCard
                       key={forwarder.id}
                       forwarder={forwarder}
@@ -318,7 +278,12 @@ const NewOrderPage = () => {
                       }}
                     />
                   ))}
-              </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No freight forwarders available for the selected shipment type.
+                </div>
+              )}
             </div>
 
             {/* Document Upload Section */}

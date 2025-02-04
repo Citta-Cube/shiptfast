@@ -1,27 +1,28 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const TransitRoute = ({ order, quotation }) => {
+const TransitRoute = ({ origin, destination, transshipmentPorts }) => {
+  console.log(transshipmentPorts);
   return (
     <div className="flex items-center space-x-2">
-      <span className="text-sm font-medium">{order.originPort}</span>
-      {quotation.transhipmentPorts && quotation.transhipmentPorts.map((port, index) => (
+      <span className="text-sm font-medium">{origin}</span>
+      {transshipmentPorts && transshipmentPorts.map((port_sequence, index) => (
         <React.Fragment key={index}>
           <span className="text-sm">→</span>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
-                <span className="text-sm font-medium">{port.port}</span>
+                <span className="text-sm font-medium">{port_sequence.port.port_code}</span>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Estimated Time: {port.estimatedTime}</p>
+                <p>{port_sequence.port.name}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </React.Fragment>
       ))}
       <span className="text-sm">→</span>
-      <span className="text-sm font-medium">{order.destinationPort}</span>
+      <span className="text-sm font-medium">{destination}</span>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-// app/auth/signup/page.js
+// app/auth/forgot-password/page.js
 'use client';
 
 import { useState } from 'react';
@@ -7,15 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { signup } from '@/app/auth/actions';
+import { forgotPassword } from '@/app/auth/actions';
 
-export default function SignUp() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -23,22 +22,16 @@ export default function SignUp() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      setIsLoading(false);
-      return;
-    }
+    setSuccess('');
 
     try {
       const formData = new FormData();
       formData.append('email', email);
-      formData.append('password', password);
 
-      await signup(formData);
-      // If signup is successful, the server action will handle the redirect
+      const result = await forgotPassword(formData);
+      setSuccess(result.message);
     } catch (error) {
-      setError(error.message || 'An error occurred during signup. Please try again.');
+      setError(error.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -48,9 +41,9 @@ export default function SignUp() {
     <div className="flex items-center justify-center min-h-screen">
       <Card className="w-[350px] shadow-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Sign Up</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Forgot Password</CardTitle>
           <CardDescription className="text-center">
-            Create an account to get started
+            Enter your email to reset your password
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -66,32 +59,16 @@ export default function SignUp() {
                 required 
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                placeholder="••••••••"
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input 
-                id="confirmPassword" 
-                type="password" 
-                placeholder="••••••••"
-                value={confirmPassword} 
-                onChange={(e) => setConfirmPassword(e.target.value)} 
-                required 
-              />
-            </div>
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert variant="success" className="bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
             <Button 
@@ -99,7 +76,7 @@ export default function SignUp() {
               className="w-full" 
               disabled={isLoading}
             >
-              {isLoading ? 'Signing Up...' : 'Sign Up'}
+              {isLoading ? 'Sending...' : 'Send Reset Link'}
             </Button>
           </form>
         </CardContent>
@@ -109,7 +86,7 @@ export default function SignUp() {
             className="text-sm text-gray-500"
             onClick={() => router.push('/auth/signin')}
           >
-            Already have an account? Sign In
+            Back to Sign In
           </Button>
         </CardFooter>
       </Card>

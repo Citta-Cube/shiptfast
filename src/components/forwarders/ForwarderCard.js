@@ -8,46 +8,39 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, CheckCircle, Users, Package, ArrowRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from 'next/link';
+import { FreightServiceTags, FreightStatusIndicator } from "@/components/forwarders/FreightMetadata";
 
 const ForwarderCard = ({ forwarder }) => {
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'bg-green-500';
-      case 'inactive': return 'bg-yellow-500';
-      case 'blacklisted': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
+  const defaultIcon = 'https://via.placeholder.com/160?text=' + forwarder.name.charAt(0);
 
   return (
     <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-lg">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <Avatar className="h-16 w-16 rounded-lg">
-            <AvatarImage src={forwarder.logo} alt={forwarder.name} />
+          <Avatar className="h-16 w-16 flex-shrink-0 rounded-lg">
+            <AvatarImage src={forwarder.iconurl || defaultIcon} alt={forwarder.name} />
             <AvatarFallback className="text-lg font-bold">{forwarder.name.charAt(0)}</AvatarFallback>
           </Avatar>
-          <div className="text-right">
-            <div className="flex flex-row justify-center items-center	">
-              <Badge variant="outline" className="capitalize mr-2">
-                {forwarder.status}
-              </Badge>
-              <div className={`w-3 h-3 rounded-full ${getStatusColor(forwarder.status)} ml-auto`} />
-            </div>
+          <div className="text-right flex-shrink-0">
+            <FreightStatusIndicator 
+              status={forwarder.relationship?.status} 
+              showDot={true}
+              size="sm"
+            />
           </div>
         </div>
         
-        <h3 className="text-xl font-bold mb-2 truncate">{forwarder.name}</h3>
+        <h3 className="text-lg font-bold mb-2 truncate" title={forwarder.name}>{forwarder.name}</h3>
         
         <div className="flex items-center mb-4">
-          <Star className="h-5 w-5 text-yellow-400 mr-1" />
-          <span className="text-lg font-semibold">{forwarder.rating.toFixed(1)}</span>
-          <span className="text-sm text-gray-500 ml-2">({forwarder.ordersCompleted-223})</span>
-          {forwarder.isVerified && (
+          <Star className="h-5 w-5 text-yellow-400 mr-1 flex-shrink-0" />
+          <span className="text-base font-semibold">{forwarder.average_rating?.toFixed(1) || '0.0'}</span>
+          <span className="text-sm text-gray-500 ml-2">({forwarder.total_ratings || 0})</span>
+          {forwarder.is_verified && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <CheckCircle className="h-5 w-5 text-blue-500 ml-2" />
+                  <CheckCircle className="h-5 w-5 text-blue-500 ml-2 flex-shrink-0" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Verified Forwarder</p>
@@ -57,24 +50,23 @@ const ForwarderCard = ({ forwarder }) => {
           )}
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex items-center">
-            <Users className="h-5 w-5 text-gray-400 mr-2" />
-            <span>{forwarder.employees} employees</span>
+        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+          <div className="flex items-center min-w-0">
+            <Users className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0" />
+            <span className="truncate" title={forwarder.email}>{forwarder.email}</span>
           </div>
-          <div className="flex items-center">
-            <Package className="h-5 w-5 text-gray-400 mr-2" />
-            <span>{forwarder.ordersCompleted} orders</span>
+          <div className="flex items-center min-w-0">
+            <Package className="h-5 w-5 text-gray-400 mr-2 flex-shrink-0" />
+            <span className="truncate">{forwarder.total_orders || 0} orders</span>
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-2 mb-4">
-          {forwarder.services.map(service => (
-            <Badge key={service} variant="secondary" className="capitalize">
-              {service}
-            </Badge>
-          ))}
-        </div>
+        <FreightServiceTags 
+          services={forwarder.services}
+          showIcon={false}
+          size="sm"
+          className="mb-4"
+        />
         
         <Link href={`/forwarders/${forwarder.id}`} passHref>
           <Button variant="default" className="w-full group">

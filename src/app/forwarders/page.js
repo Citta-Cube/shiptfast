@@ -11,31 +11,37 @@ import MetricCard from "@/components/shared/MetricCard";
 
 const FreightForwardersDashboard = () => {
   const [forwarders, setForwarders] = useState([]);
-  const [filters, setFilters] = useState({ status: null, services: null, search: '', sort: null });
+  const [filters, setFilters] = useState({ status: 'all', services: 'all', search: '', sort: 'default' });
 
   useEffect(() => {
     fetchForwarders();
   }, [filters]);
 
   const fetchForwarders = async () => {
-    const queryParams = new URLSearchParams();
-    if (filters.status) queryParams.append('status', filters.status);
-    if (filters.services) queryParams.append('services', filters.services);
-    if (filters.search) queryParams.append('search', filters.search);
-    if (filters.sort) queryParams.append('sort', filters.sort);
-    
-    const response = await fetch(`/api/freight-forwarders?${queryParams.toString()}`);
-    const data = await response.json();
-    setForwarders(data);
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters.status !== 'all') queryParams.append('status', filters.status.toUpperCase());
+      if (filters.services !== 'all') queryParams.append('services', filters.services.toUpperCase());
+      if (filters.search) queryParams.append('search', filters.search);
+      if (filters.sort !== 'default') queryParams.append('sort', filters.sort);
+      
+      const response = await fetch(`/api/freight-forwarders?${queryParams.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch forwarders');
+      const data = await response.json();
+      setForwarders(data);
+    } catch (error) {
+      console.error('Error fetching forwarders:', error);
+      // You might want to add toast notification here
+    }
   };
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const activeForwarders = forwarders.filter(ff => ff.status === 'active');
+  const activeForwarders = forwarders.filter(ff => ff.relationship?.status === 'ACTIVE');
   const averageScore = activeForwarders.length > 0
-    ? activeForwarders.reduce((sum, ff) => sum + ff.rating, 0) / activeForwarders.length
+    ? activeForwarders.reduce((sum, ff) => sum + (ff.average_rating || 0), 0) / activeForwarders.length
     : 0;
 
   return (
@@ -70,37 +76,46 @@ const FreightForwardersDashboard = () => {
           onChange={(e) => handleFilterChange('search', e.target.value)}
           className="max-w-xs"
         />
-        <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
+        <Select 
+          value={filters.status} 
+          onValueChange={(value) => handleFilterChange('status', value)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={null}>All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="blacklisted">Blacklisted</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="INACTIVE">Inactive</SelectItem>
+            <SelectItem value="BLACKLISTED">Blacklisted</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filters.services} onValueChange={(value) => handleFilterChange('services', value)}>
+        <Select 
+          value={filters.services} 
+          onValueChange={(value) => handleFilterChange('services', value)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by service" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={null}>All Services</SelectItem>
-            <SelectItem value="air">Air</SelectItem>
-            <SelectItem value="sea">Sea</SelectItem>
-            <SelectItem value="rail">Rail</SelectItem>
-            <SelectItem value="road">Road</SelectItem>
+            <SelectItem value="all">All Services</SelectItem>
+            <SelectItem value="AIR">Air</SelectItem>
+            <SelectItem value="SEA">Sea</SelectItem>
+            <SelectItem value="RAIL">Rail</SelectItem>
+            <SelectItem value="ROAD">Road</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filters.sort} onValueChange={(value) => handleFilterChange('sort', value)}>
+        <Select 
+          value={filters.sort} 
+          onValueChange={(value) => handleFilterChange('sort', value)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by rating" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={null}>Default</SelectItem>
-            <SelectItem value="asc">Rating: Low to High</SelectItem>
-            <SelectItem value="desc">Rating: High to Low</SelectItem>
+            <SelectItem value="default">Default Order</SelectItem>
+            <SelectItem value="rating_asc">Rating: Low to High</SelectItem>
+            <SelectItem value="rating_desc">Rating: High to Low</SelectItem>
           </SelectContent>
         </Select>
       </div>

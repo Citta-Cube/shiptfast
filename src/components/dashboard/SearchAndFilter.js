@@ -28,8 +28,8 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="FCL">FCL</SelectItem>
-          <SelectItem value="LCL">LCL</SelectItem>
+          <SelectItem value="fcl">FCL</SelectItem>
+          <SelectItem value="lcl">LCL</SelectItem>
         </SelectContent>
       </Select>
       <Select value={activeFilters.status} onValueChange={onFilterStatus}>
