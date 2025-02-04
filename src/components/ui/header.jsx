@@ -1,12 +1,34 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Menu, Search, CircleUser } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { dashboardConfig } from '@/config/dashboard'
+import { logout } from '@/app/auth/actions'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
 
 const Header = () => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logout()
+      // The server action will handle the redirect, but we can also do it here as a fallback
+      router.push('/auth/signin')
+    } catch (error) {
+      console.error('Logout failed:', error)
+      // Handle error (e.g., show a notification to the user)
+    } finally {
+      setIsLoggingOut(false)
+    }
+  }
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
       <Sheet>
@@ -65,10 +87,19 @@ const Header = () => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => router.push('/settings')}>
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => router.push('/support')}>
+              Support
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={handleLogout}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <ThemeModeToggle />

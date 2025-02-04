@@ -1,94 +1,33 @@
-import prisma from '@/lib/prisma'
+import { supabase } from '@/lib/superbase';
 
-export async function getQuotesByOrderId(orderId) {
-  return prisma.quote.findMany({
-    where: { orderId },
-    include: {
-      freightForwarder: true,
-      transshipmentPorts: {
-        include: {
-          port: true,
-        },
-      },
-    },
-  })
-}
-
-export async function createQuote(data) {
-  return prisma.quote.create({
-    data,
-    include: {
-      freightForwarder: true,
-      transshipmentPorts: {
-        include: {
-          port: true,
-        },
-      },
-    },
-  })
-}
-
-export async function updateQuote(id, data) {
-  return prisma.quote.update({
-    where: { id },
-    data,
-    include: {
-      freightForwarder: true,
-      transshipmentPorts: {
-        include: {
-          port: true,
-        },
-      },
-    },
-  })
-}
-
-export async function getHistoricalPrices(originPortId, destinationPortId, duration = 6) {
-    const startDate = new Date()
-    startDate.setMonth(startDate.getMonth() - duration)
+export async function getQuoteById(id) {
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('*, orders(*), companies(*)')
+    .eq('id', id)
+    .single();
   
-    return prisma.quote.findMany({
-      where: {
-        order: {
-          originPortId: originPortId,
-          destinationPortId: destinationPortId,
-          createdAt: {
-            gte: startDate
-          }
-        }
-      },
-      select: {
-        netFreightCost: true,
-        createdAt: true,
-        order: {
-          select: {
-            shipmentType: true,
-            loadType: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    })
+  if (error) throw error;
+  return data;
 }
+
+export async function createQuote(quote) {
+  const { data, error } = await supabase
+    .from('quotes')
+    .insert(quote)
+    .select()
+    .single();
   
-export async function getQuotesByForwarderAndStatus(forwarderId, status) {
-    return prisma.quote.findMany({
-      where: {
-        freightForwarderId: forwarderId,
-        order: {
-          status: status
-        }
-      },
-      include: {
-        order: {
-          include: {
-            exporter: true,
-            originPort: true,
-            destinationPort: true
-          }
-        }
-      }
-    })
+  if (error) throw error;
+  return data;
+}
+
+export async function getQuotesByOrder(orderId) {
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('*, companies(*)')
+    .eq('order_id', orderId);
+  
+  if (error) throw error;
+  return data;
 }

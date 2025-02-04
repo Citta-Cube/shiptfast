@@ -1,51 +1,23 @@
-import prisma from '@/lib/prisma'
+import { supabase } from '@/lib/superbase';
 
 export async function getCompanyById(id) {
-  return prisma.company.findUnique({
-    where: { id },
-    include: {
-      freightForwarder: true,
-      exporter: true,
-    },
-  })
-}
-
-export async function createCompany(data) {
-  return prisma.company.create({
-    data,
-    include: {
-      freightForwarder: true,
-      exporter: true,
-    },
-  })
-}
-
-export async function createFreightForwarder(companyId, data) {
-    return prisma.freightForwarder.create({
-      data: {
-        companyId,
-        services: data.services,
-        sVATNumber: data.sVATNumber,
-        bRNumber: data.bRNumber,
-      },
-    })
-  }
+  const { data, error } = await supabase
+    .from('companies')
+    .select('*')
+    .eq('id', id)
+    .single();
   
-  export async function createExporter(companyId) {
-    return prisma.exporter.create({
-      data: {
-        companyId,
-      },
-    })
-  }
+  if (error) throw error;
+  return data;
+}
 
-export async function updateCompany(id, data) {
-  return prisma.company.update({
-    where: { id },
-    data,
-    include: {
-      freightForwarder: true,
-      exporter: true,
-    },
-  })
+export async function createCompany(company) {
+  const { data, error } = await supabase
+    .from('companies')
+    .insert(company)
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
 }

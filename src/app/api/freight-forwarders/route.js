@@ -1,38 +1,58 @@
 // src/app/api/freight-forwarders/route.js
-import { mockFreightForwarders } from '@/mockData/freightForwarders';
+import { getForwardersByExporter } from '@/data-access/freightForwarders';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const services = searchParams.get('services');
-  const search = searchParams.get('search');
-  const sort = searchParams.get('sort');
+  try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const services = searchParams.get('services');
+    const search = searchParams.get('search');
+    const sort = searchParams.get('sort');
+    const exporterId = 'e0912188-4fbd-415e-b5a7-19b35cfbab42';
 
-  let filteredForwarders = [...mockFreightForwarders];
+    if (!exporterId) {
+      return NextResponse.json(
+        { error: 'Exporter ID is required' },
+        { status: 400 }
+      );
+    }
 
-  if (status && status !== 'null') {
-    filteredForwarders = filteredForwarders.filter(ff => ff.status === status);
-  }
+    let forwarders = await getForwardersByExporter(exporterId);
 
-  if (services && services !== 'null') {
-    const serviceList = services.split(',');
-    filteredForwarders = filteredForwarders.filter(ff => 
-      serviceList.every(service => ff.services.includes(service))
+    // Apply filters
+    if (status && status !== 'null') {
+      forwarders = forwarders.filter(ff => ff.relationship.status === status);
+    }
+
+    if (services && services !== 'null') {
+      const serviceList = services.split(',');
+      forwarders = forwarders.filter(ff => 
+        serviceList.every(service => ff.services.includes(service))
+      );
+    }
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      forwarders = forwarders.filter(ff => 
+        ff.name.toLowerCase().includes(searchLower) ||
+        ff.email.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply sorting
+    if (sort === 'asc') {
+      forwarders.sort((a, b) => (a.average_rating || 0) - (b.average_rating || 0));
+    } else if (sort === 'desc') {
+      forwarders.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+    }
+
+    return NextResponse.json(forwarders);
+  } catch (error) {
+    console.error('Error fetching freight forwarders:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch freight forwarders' },
+      { status: 500 }
     );
   }
-
-  if (search) {
-    filteredForwarders = filteredForwarders.filter(ff => 
-      ff.name.toLowerCase().includes(search.toLowerCase())
-    );
-  }
-
-  if (sort === 'asc') {
-    filteredForwarders.sort((a, b) => a.rating - b.rating);
-  } else if (sort === 'desc') {
-    filteredForwarders.sort((a, b) => b.rating - a.rating);
-  }
-
-  return NextResponse.json(filteredForwarders);
 }

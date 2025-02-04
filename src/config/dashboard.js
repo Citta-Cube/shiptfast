@@ -1,4 +1,4 @@
-import { Home, Package, Users, LineChart, CreditCard, Settings } from "lucide-react"
+import { Home, Package, Users, LineChart, CreditCard, Settings, Ship, Plane, Clock } from "lucide-react"
 
 export const dashboardConfig = {
   mainNav: [
@@ -17,31 +17,53 @@ export const dashboardConfig = {
       title: "Dashboard",
       href: "/dashboard",
       icon: Home,
-    },
-    {
-      title: "Orders",
-      href: "/dashboard/orders",
-      icon: Package,
+      submenu: [
+        {
+          title: "Shipment Type",
+          items: [
+            {
+              title: "Sea Freight",
+              href: "/dashboard?shipmentType=sea",
+              icon: Ship,
+            },
+            {
+              title: "Air Freight",
+              href: "/dashboard?shipmentType=air",
+              icon: Plane,
+            },
+          ]
+        },
+        {
+          title: "Status",
+          items: [
+            {
+              title: "Open Orders",
+              href: "/dashboard?status=open",
+              icon: Clock,
+            },
+            {
+              title: "Pending Orders",
+              href: "/dashboard?status=pending",
+              icon: Clock,
+            },
+            {
+              title: "Closed Orders",
+              href: "/dashboard?status=closed",
+              icon: Clock,
+            },
+          ]
+        }
+      ]
     },
     {
       title: "Freight Forwarders",
       href: "/forwarders",
       icon: Users,
-    },
-    {
-      title: "Analytics",
-      href: "/dashboard/analytics",
-      icon: LineChart,
-    },
-    {
-      title: "Billing",
-      href: "/dashboard/billing",
-      icon: CreditCard,
-    },
-    {
-      title: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-    },
+    }
+    // {
+    //   title: "Analytics",
+    //   href: "/dashboard/analytics",
+    //   icon: LineChart,
+    // }
   ],
 }
