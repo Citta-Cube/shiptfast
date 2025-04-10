@@ -32,7 +32,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectItem value="lcl">LCL</SelectItem>
         </SelectContent>
       </Select>
-      <Select value={activeFilters.status} onValueChange={onFilterStatus}>
+      <Select value={activeFilters.status} onValueChange={onFilterStatus} multiple>
         <SelectTrigger className="md:w-1/5">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
@@ -41,6 +41,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectItem value="open">Open</SelectItem>
           <SelectItem value="pending">Pending</SelectItem>
           <SelectItem value="closed">Closed</SelectItem>
+          <SelectItem value="cancelled">Cancelled</SelectItem>
         </SelectContent>
       </Select>
       <Select value={activeFilters.sortBy} onValueChange={onSort}>

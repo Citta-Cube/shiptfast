@@ -14,6 +14,8 @@ create table public.company_members (
     is_active boolean not null default true,
     created_at timestamp with time zone not null default now(),
     updated_at timestamp with time zone not null default now(),
+    first_name text null,
+    last_name text null,
     constraint company_members_pkey primary key (id),
     constraint company_members_company_user_unique unique (company_id, user_id)
 );

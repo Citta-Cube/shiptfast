@@ -1,11 +1,26 @@
+'use client';
+
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown, StickyNote } from 'lucide-react';
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from 'sonner';
 import StarRating from './StarRating';
 import PriceHistoryDialog from './PriceHistoryDialog';
 import { shipmentTypes } from '@/config/shipmentConfig';
+import { QuoteStatusBadge } from '@/components/dashboard/OrderMetadata';
 import TransitRoute from './TransitRoute';
 
 const generatePriceHistory = (currentPrice, quoteId) => {
@@ -26,18 +41,60 @@ const generatePriceHistory = (currentPrice, quoteId) => {
 };
 
 const QuotationRow = ({ quotation, order, onSelectAgent }) => {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
   const priceHistory = generatePriceHistory(quotation.net_freight_cost, quotation.id);
   const previousPrice = priceHistory[priceHistory.length - 2].price;
   const priceChange = ((quotation.net_freight_cost - previousPrice) / previousPrice) * 100;
+
+  const handleSelectQuote = async () => {
+    setIsSelecting(true);
+    try {
+      const response = await fetch(
+        `/api/orders/${order.id}/quotes/${quotation.id}/select`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error);
+      }
+
+      toast.success('Quote selected successfully', {
+        description: `You have selected ${quotation.companies.name} as your freight forwarder.`
+      });
+      
+      onSelectAgent(quotation.freight_forwarder_id);
+      setShowConfirmDialog(false);
+
+      setTimeout(() => {
+        router.refresh();
+      }, 500);
+
+    } catch (error) {
+      toast.error('Failed to select quote', {
+        description: error.message
+      });
+    } finally {
+      setIsSelecting(false);
+    }
+  };
 
   const renderShipmentSpecificFields = () => {
     const shipmentType = shipmentTypes[order.shipment_type];
     if (!shipmentType) return null;
 
     return (
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-4 gap-4 mt-4">
         {shipmentType.fields.map((field) => (
           <div key={field.key}>
             <p className="text-sm font-medium">{field.label}</p>
@@ -81,9 +138,10 @@ const QuotationRow = ({ quotation, order, onSelectAgent }) => {
             transshipmentPorts={quotation?.transshipment_ports}
           />
         </TableCell>
+        <TableCell>{<QuoteStatusBadge status={quotation.status} />}</TableCell>
         <TableCell className="text-right">
           <div className="flex items-center justify-end space-x-2">
-           {quotation.note && (
+            {quotation.note && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -104,21 +162,56 @@ const QuotationRow = ({ quotation, order, onSelectAgent }) => {
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
-            {order.status === 'OPEN' && (
+            {order.status === 'PENDING' && quotation.status === 'ACTIVE' && (
               <Button 
-                onClick={() => onSelectAgent(quotation.freight_forwarder_id)} 
-                size="sm" 
+                onClick={() => setShowConfirmDialog(true)}
+                size="sm"
                 variant="default"
+                disabled={isSelecting}
               >
-                Select
+                {isSelecting ? 'Selecting...' : 'Select Quote'}
               </Button>
             )}
           </div>
         </TableCell>
       </TableRow>
+
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Quote Selection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to select {quotation.companies.name} as your freight forwarder? 
+              This action will reject all other quotes and cannot be undone.
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Freight Cost</p>
+                    <p className="text-lg font-semibold">${quotation.net_freight_cost.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Estimated Time</p>
+                    <p className="text-lg font-semibold">{quotation.estimated_time_days} days</p>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSelectQuote}
+              disabled={isSelecting}
+            >
+              {isSelecting ? 'Selecting...' : 'Confirm Selection'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {expanded && (
         <TableRow>
-          <TableCell colSpan={6}>
+          <TableCell colSpan={7}>
             <div className="p-4 bg-muted rounded-md">
               {renderShipmentSpecificFields()}
             </div>

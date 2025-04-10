@@ -4,6 +4,7 @@ import QuotationRow from './QuotationRow';
 import { tableColumns } from '@/config/shipmentConfig';
 
 const QuotationTable = ({ quotations, order, onSelectAgent }) => {
+  console.log(quotations);
   return (
     <Table>
       <TableHeader>
@@ -18,7 +19,7 @@ const QuotationTable = ({ quotations, order, onSelectAgent }) => {
       <TableBody>
         {quotations.map((quotation) => (
           <QuotationRow 
-            key={quotation.agentId} 
+            key={quotation.id} 
             quotation={quotation} 
             order={order} 
             onSelectAgent={onSelectAgent}

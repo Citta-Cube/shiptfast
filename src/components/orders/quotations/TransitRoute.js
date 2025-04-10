@@ -2,7 +2,6 @@ import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const TransitRoute = ({ origin, destination, transshipmentPorts }) => {
-  console.log(transshipmentPorts);
   return (
     <div className="flex items-center space-x-2">
       <span className="text-sm font-medium">{origin}</span>

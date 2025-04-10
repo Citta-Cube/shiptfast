@@ -29,10 +29,9 @@ export default function SignIn() {
       formData.append('password', password);
 
       await login(formData);
-      // If login is successful, the server action will handle the redirect
+      // The server action will handle the redirect
     } catch (error) {
       setError(error.message || 'Invalid email or password. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };

@@ -1,6 +1,6 @@
 import mockOrders from '@/mockData/orders';
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/superbase/server';
+import { createClient } from '@/lib/supabase/server';
 import { getAllOrders } from '@/data-access/orders';
 
 const supabase = createClient();
@@ -52,11 +52,6 @@ export async function POST(req) {
     // });
 
     // if (error) throw error;
-
-    console.log("Order Data: ", orderData);
-    console.log("Selected Forwarders: ", selectedForwarders);
-    console.log("Document Metadata: ", documentMetadata);
-    console.log("Files: ", files);
 
     return NextResponse.json({ success: true, orderId: data.order_id }, { status: 201 });
   } catch (error) {

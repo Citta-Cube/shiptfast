@@ -10,6 +10,7 @@ import { LoadingPage } from '@/components/ui/loading-spinner';
 
 export default function ForwarderProfile({ forwarderId }) {
   const [data, setData] = useState({ forwarder: null, documents: [], isLoading: true });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,16 +42,47 @@ export default function ForwarderProfile({ forwarderId }) {
     fetchData();
   }, [forwarderId]);
 
+  const handleStatusChange = async ({ action, reason }) => {
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/freight-forwarders/${forwarderId}/relationship`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, reason }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update status');
+      }
+
+      const result = await response.json();
+      
+      // Update local state with new relationship status
+      setData(prev => ({
+        ...prev,
+        forwarder: {
+          ...prev.forwarder,
+          relationship: {
+            ...prev.forwarder.relationship,
+            status: result.data.status,
+            blacklist_reason: result.data.blacklist_reason
+          }
+        }
+      }));
+
+      toast.success(result.message);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (data.isLoading) return <LoadingPage />;
   if (!data.forwarder) return <div>Forwarder not found</div>;
-
-  const handleStatusChange = async (newStatus) => {
-    setData(prev => ({
-      ...prev,
-      forwarder: { ...prev.forwarder, status: newStatus }
-    }));
-    toast.success(`Forwarder status updated to ${newStatus}`);
-  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -59,11 +91,17 @@ export default function ForwarderProfile({ forwarderId }) {
           <Profile 
             forwarder={data.forwarder} 
             onStatusChange={handleStatusChange}
+            isUpdating={isUpdating}
           />
         </CardContent>
       </Card>
 
-      <DocumentSection documents={data.documents} />
+      <DocumentSection
+        documents={data.documents}
+        entityId={forwarderId}
+        entityType="FORWARDER"
+        canUpload={false}
+      />
 
       <Card className="lg:col-span-3">
         <CardContent>

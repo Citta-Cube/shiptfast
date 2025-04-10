@@ -1,6 +1,6 @@
 // File: app/api/ports/route.js
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/superbase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // Cache the results for 1 hour (3600 seconds)
 export const revalidate = 3600

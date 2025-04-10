@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/superbase/server';
+import { createClient } from '@/lib/supabase/server';
 import { createOrder } from '@/data-access/orders';
 import { uploadDocuments } from '@/data-access/document';
 

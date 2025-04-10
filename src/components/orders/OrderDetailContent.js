@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import OrderSummary from './OrderSummary';
 import DocumentSection from './DocumentSection';
 import QuotationSection from './quotations/QuotationSection';
-import TimelineSheet from './TimelineSheet';
-import HistoricalPricingChart from './HistoricalPricingChart';
 
 // Mocked API function
 const fetchHistoricalData = (startPort, endPort) => {
@@ -14,10 +12,6 @@ const fetchHistoricalData = (startPort, endPort) => {
       const mockData = [
         { date: '2023-01', price: 2000 },
         { date: '2023-02', price: 2100 },
-        { date: '2023-03', price: 2050 },
-        { date: '2023-04', price: 2200 },
-        { date: '2023-05', price: 2150 },
-        { date: '2023-06', price: 3200 },
       ];
       resolve(mockData);
     }, 1500); // Simulate a 1.5 second delay
@@ -76,15 +70,17 @@ const OrderDetailContent = ({ order, documents, quotes }) => {
           <h1 className="text-3xl font-bold">Order {currentOrder.reference_number}</h1>
           <p className="text-sm text-muted-foreground">ID: {currentOrder.id}</p>
         </div>
-        {/* <TimelineSheet 
-          events={currentOrder.timeline} 
-          onPublishMessage={handlePublishMessage}
-        /> */}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <OrderSummary order={order} onCancelOrder={handleCancelOrder} />
-        <DocumentSection documents={documents} orderId={currentOrder.id} showUpload={true}/>
+        <DocumentSection
+          documents={documents}
+          entityId={currentOrder.id}
+          entityType="ORDER"
+          canUpload={true}
+          canDelete={true}
+        />
         <QuotationSection 
           order={order}
           quotes={quotes}

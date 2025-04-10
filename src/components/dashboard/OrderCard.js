@@ -1,35 +1,12 @@
 // @/components/dashboard/OrderCard.js
 import React from 'react';
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Ship, Plane, Package, Box, Container } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
+import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import UrgentIndicator from './UrgentIndicator';
 import Link from 'next/link';
-
-const ShipmentTypeIcon = ({ type }) => {
-  return type === 'sea' ? <Ship className="h-4 w-4" /> : <Plane className="h-4 w-4" />;
-};
-
-const LoadTypeIcon = ({ type }) => {
-  return type === 'FCL' ? <Container className="h-4 w-4" /> : <Package className="h-4 w-4" />;
-};
-
-const StatusBadge = ({ status }) => {
-  const statusColors = {
-    open: 'bg-green-500',
-    pending: 'bg-yellow-500',
-    closed: 'bg-gray-500'
-  };
-
-  return (
-    <Badge className={`${statusColors[status]} text-white`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
-  );
-};
 
 const OrderCard = ({ order }) => {
   return (
@@ -82,7 +59,7 @@ const OrderCard = ({ order }) => {
           )}
           <div className="col-span-2 flex flex-col space-y-1">
             <span className="text-xs text-muted-foreground">Quotations Received</span>
-            <span className="text-sm font-medium">{10}</span>
+            <span className="text-sm font-medium">{order.quote_count}</span>
           </div>
         </div>
       </CardContent>

@@ -5,7 +5,6 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     const quotes = await getOrderQuotes(id);
-    console.log(quotes);
     
     return NextResponse.json(quotes);
   } catch (error) {

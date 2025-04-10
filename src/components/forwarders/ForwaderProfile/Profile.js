@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Phone, Mail, Globe, MapPin, Star, CheckCircle2, Package } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { FreightServiceTags, FreightStatusIndicator } from "@/components/forwarders/FreightMetadata";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export default function Profile({ forwarder, onStatusChange }) {
+export default function Profile({ forwarder, onStatusChange, isUpdating }) {
+  const [blacklistReason, setBlacklistReason] = useState('');
+  const [isBlacklistDialogOpen, setIsBlacklistDialogOpen] = useState(false);
+
   const contactItems = [
     { icon: Phone, value: forwarder.phone },
     { icon: Mail, value: forwarder.email },
@@ -16,6 +22,26 @@ export default function Profile({ forwarder, onStatusChange }) {
     },
     { icon: MapPin, value: forwarder.address }
   ];
+
+  const handleStatusAction = (action) => {
+    if (action === 'blacklist' && !blacklistReason.trim()) {
+      return;
+    }
+    
+    onStatusChange({
+      action,
+      reason: action === 'blacklist' ? blacklistReason : undefined
+    });
+
+    if (action === 'blacklist') {
+      setBlacklistReason('');
+      setIsBlacklistDialogOpen(false);
+    }
+  };
+
+  const currentStatus = forwarder.relationship?.status?.toUpperCase();
+  const isBlacklisted = currentStatus === 'BLACKLISTED';
+  const isActive = currentStatus === 'ACTIVE';
 
   return (
     <div className="space-y-6">
@@ -91,22 +117,46 @@ export default function Profile({ forwarder, onStatusChange }) {
       {/* Action Buttons Section */}
       <div className="pt-2">
         <div className="flex space-x-4">
-          <AlertDialog>
+          <AlertDialog open={isBlacklistDialogOpen} onOpenChange={setIsBlacklistDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant={forwarder.status === 'blacklisted' ? 'default' : 'destructive'}>
-                {forwarder.status === 'blacklisted' ? 'Unblacklist' : 'Blacklist'}
+              <Button 
+                variant={isBlacklisted ? 'default' : 'destructive'}
+                disabled={isUpdating}
+              >
+                {isBlacklisted ? 'Remove from Blacklist' : 'Blacklist'}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isBlacklisted ? 'Remove from Blacklist' : 'Blacklist Forwarder'}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action will {forwarder.status === 'blacklisted' ? 'unblacklist' : 'blacklist'} the freight forwarder.
+                  {isBlacklisted 
+                    ? 'This will remove the forwarder from the blacklist. They will be set to inactive status.'
+                    : 'This action will blacklist the freight forwarder. All their active quotes will be cancelled.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
+
+              {!isBlacklisted && (
+                <div className="py-4">
+                  <Label htmlFor="reason">Reason for blacklisting</Label>
+                  <Input
+                    id="reason"
+                    value={blacklistReason}
+                    onChange={(e) => setBlacklistReason(e.target.value)}
+                    placeholder="Enter reason for blacklisting"
+                    className="mt-2"
+                  />
+                </div>
+              )}
+
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onStatusChange(forwarder.status === 'blacklisted' ? 'inactive' : 'blacklisted')}>
+                <AlertDialogAction
+                  onClick={() => handleStatusAction(isBlacklisted ? 'activate' : 'blacklist')}
+                  disabled={!isBlacklisted && !blacklistReason.trim()}
+                >
                   Continue
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -115,26 +165,43 @@ export default function Profile({ forwarder, onStatusChange }) {
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" disabled={forwarder.status === 'blacklisted'}>
-                {forwarder.status === 'active' ? 'Deactivate' : 'Activate'}
+              <Button 
+                variant="outline" 
+                disabled={isBlacklisted || isUpdating}
+              >
+                {isActive ? 'Deactivate' : 'Activate'}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {isActive ? 'Deactivate Forwarder' : 'Activate Forwarder'}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action will {forwarder.status === 'active' ? 'deactivate' : 'activate'} the freight forwarder.
+                  {isActive 
+                    ? 'This will deactivate the forwarder. All their active quotes will be cancelled.'
+                    : 'This will activate the forwarder, allowing them to submit quotes.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => onStatusChange(forwarder.status === 'active' ? 'inactive' : 'active')}>
+                <AlertDialogAction
+                  onClick={() => handleStatusAction(isActive ? 'deactivate' : 'activate')}
+                >
                   Continue
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </div>
+
+        {/* Show current blacklist reason if blacklisted */}
+        {isBlacklisted && forwarder.relationship?.blacklist_reason && (
+          <div className="mt-4 p-4 bg-destructive/10 rounded-md">
+            <p className="text-sm font-medium text-destructive">Blacklist Reason:</p>
+            <p className="mt-1 text-sm">{forwarder.relationship.blacklist_reason}</p>
+          </div>
+        )}
       </div>
     </div>
   );

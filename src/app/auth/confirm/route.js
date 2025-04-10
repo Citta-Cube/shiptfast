@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { createClient } from '@/lib/superbase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // Creating a handler to a GET request to route /auth/confirm
 export async function GET(request) {

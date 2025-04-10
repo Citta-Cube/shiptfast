@@ -1,0 +1,50 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+**Context**
+This freight management system connects companies with freight agents for shipping services. Companies create orders with cargo details while freight agents submit quotes. Features include order tracking, quote management, and communication tools.
+
+**Project Structure**
+```
+freight-management/
+├── docs/                  # Project documentation
+├── scripts/sql/           # Database schemas and migrations
+├── src/
+│   ├── app/               
+│   │   ├── api/           # API routes for orders, forwarders, documents
+│   │   ├── auth/          # Authentication UI
+│   │   ├── dashboard/     # Main dashboard interface
+│   │   ├── forwarders/    # Freight forwarder profiles and listings
+│   │   ├── orders/        # Order management pages
+│   │   ├── profile/       # User profiles
+│   ├── components/        # UI components by feature
+│   ├── config/            # Configuration files for UI components
+│   ├── data-access/       # Data layer for Supabase
+│   ├── hooks/             # Custom React hooks
+│   ├── lib/               # Utilities and database clients
+├── .env.local             # Local environment variables
+├── Dockerfile             # Production Docker configuration
+```
+
+**Code Guidelines**
+- Use modern JavaScript (ES6+), functional components, named exports
+- Structure: component → subcomponents → helpers → static content
+- Naming: descriptive with verbs (isLoading, hasError), dash-case for directories
+- UI: Shadcn UI + Tailwind CSS, mobile-first, toast notifications(sonner) and loading states(/components/ui/loading-spinner.js)
+- Data: Use Supabase for database and authentication. Centralize access in data-access layer
+- Optimize Web Vitals (LCP, CLS, FID).
+- Prefer React Server Components, Limit `'use client'`:
+  - Favor server components and Next.js SSR.
+  - Use only for Web API access in small components.
+  - Avoid for data fetching or state management.
+- Performance: Suspense boundaries, dynamic imports, error/loading states
+- Always implement responsive design and proper error handling
+
+**General Preferences**
+- Follow the users requirements carefully and precisely.
+- Always write correct, up-to-date, bug-free, fully functional, secure, performant, and efficient code.
+- Focus on readability over performance when appropriate.
+- Fully implement all requested functionality.
+- If you think there might not be a correct answer, say so. If you do not know the answer, admit it instead of guessing.

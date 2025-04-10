@@ -1,33 +1,10 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Ship, Plane, Package, Box, Container } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
+import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import Link from 'next/link';
-
-const ShipmentTypeIcon = ({ type }) => {
-  return type === 'sea' ? <Ship className="h-4 w-4" /> : <Plane className="h-4 w-4" />;
-};
-
-const LoadTypeIcon = ({ type }) => {
-  return type === 'FCL' ? <Container className="h-4 w-4" /> : <Package className="h-4 w-4" />;
-};
-
-const StatusBadge = ({ status }) => {
-  const statusColors = {
-    open: 'bg-green-500',
-    pending: 'bg-yellow-500',
-    closed: 'bg-gray-500'
-  };
-
-  return (
-    <Badge className={`${statusColors[status]} text-white`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
-    </Badge>
-  );
-};
 
 const OrderListView = ({ orders }) => {
   return (
@@ -73,7 +50,7 @@ const OrderListView = ({ orders }) => {
               </div>
             </TableCell>
             <TableCell>{order.status === 'OPEN' ? calculateTimeLeft(order.quotation_deadline) : '-'}</TableCell>
-            <TableCell>{order.quotationsReceived}</TableCell>
+            <TableCell>{order.quote_count}</TableCell>
             <TableCell>
               <Link href={`/orders/${order.id}`} passHref>
                 <Button variant="outline" size="sm">

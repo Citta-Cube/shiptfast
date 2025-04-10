@@ -1,56 +1,50 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/superbase/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function login(formData) {
-  const supabase = createClient()
-  
-  const data = {
-    email: formData.get('email'),
-    password: formData.get('password'),
-  }
-
-  const { error } = await supabase.auth.signInWithPassword(data)
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/')
-}
-
-export async function signup(formData) {
-  const supabase = createClient()
-
   const email = formData.get('email')
   const password = formData.get('password')
 
-  const { data: existingUser } = await supabase
-    .from('auth.users')
-    .select('id')
-    .eq('email', email)
-    .single()
+  const supabase = createClient()
 
-  console.log('existingUser:', existingUser)
-
-  if (existingUser) {
-    throw new Error('A user with this email already exists')
-  }
-
-  const data = { email, password }
-  const { error } = await supabase.auth.signUp(data)
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
 
   if (error) {
     throw new Error(error.message)
   }
 
-  // Note: You might want to handle email confirmation here if required
+  redirect('/dashboard')
+}
 
-  revalidatePath('/', 'layout')
-  redirect('/auth/signin?message=Check your email to confirm your account')
+export async function signup(formData) {
+  const email = formData.get('email')
+  const password = formData.get('password')
+  const name = formData.get('name')
+
+  const supabase = createClient()
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: name,
+      },
+    },
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // Redirect to a confirmation page or login
+  redirect('/auth/confirmation')
 }
 
 export async function logout() {
@@ -58,13 +52,10 @@ export async function logout() {
   const { error } = await supabase.auth.signOut()
   
   if (error) {
-    console.error('Error during logout:', error)
-    // You might want to handle this error differently
-    throw new Error('Failed to logout')
+    throw new Error(error.message)
   }
-
-  revalidatePath('/', 'layout')
-  redirect('/auth/signin')
+  
+  redirect('/')
 }
 
 export async function forgotPassword(formData) {

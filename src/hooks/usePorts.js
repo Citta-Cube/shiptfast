@@ -8,7 +8,6 @@ export function usePorts(searchTerm, service) {
 
   const fetchPorts = useCallback(async (search, currentPage) => {
     setIsLoading(true);
-    console.log('Fetching ports...');
     try {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -39,20 +38,16 @@ export function usePorts(searchTerm, service) {
   }, [service]); // Add service to the dependency array
 
   useEffect(() => {
-    console.log('useEffect triggered with searchTerm:', searchTerm, 'service:', service);
     setPage(1);
     fetchPorts(searchTerm, 1);
   }, [searchTerm, service, fetchPorts]); // Add service to the dependency array
 
   const fetchNextPage = useCallback(() => {
-    console.log('fetchNextPage called');
     if (hasNextPage && !isLoading) {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchPorts(searchTerm, nextPage);
     }
   }, [hasNextPage, isLoading, page, searchTerm, fetchPorts]);
-
-  console.log('usePorts returning:', { ports, isLoading, fetchNextPage, hasNextPage });
   return { ports, isLoading, fetchNextPage, hasNextPage };
 }

@@ -87,8 +87,8 @@ const Header = () => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => router.push('/settings')}>
-              Settings
+            <DropdownMenuItem onSelect={() => router.push('/profile')}>
+              User Profile
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => router.push('/support')}>
               Support

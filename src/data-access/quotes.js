@@ -31,3 +31,13 @@ export async function getQuotesByOrder(orderId) {
   if (error) throw error;
   return data;
 }
+
+export async function selectQuote(orderId, quoteId) {
+  const { data, error } = await supabase.rpc('select_quote', {
+    p_order_id: orderId,
+    p_quote_id: quoteId
+  });
+
+  if (error) throw error;
+  return data;
+}

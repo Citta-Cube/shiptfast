@@ -72,7 +72,7 @@ const DashboardContent = ({ initialFilters = {} }) => {
         // Apply search filter
         if (activeFilters.searchTerm) {
             result = result.filter(order => 
-                order.orderNumber.toLowerCase().includes(activeFilters.searchTerm.toLowerCase())
+                order.reference_number.toLowerCase().includes(activeFilters.searchTerm.toLowerCase())
             );
         }
 
@@ -94,12 +94,12 @@ const DashboardContent = ({ initialFilters = {} }) => {
         // Apply sorting
         if (activeFilters.sortBy) {
             if (activeFilters.sortBy === 'shipmentDate') {
-                result.sort((a, b) => new Date(a.shipmentDate) - new Date(b.shipmentDate));
+                result.sort((a, b) => new Date(a.cargo_ready_date) - new Date(b.cargo_ready_date));
             } else if (activeFilters.sortBy === 'timeLeft') {
                 result.sort((a, b) => {
-                    if (a.status !== 'open') return 1;
-                    if (b.status !== 'open') return -1;
-                    return new Date(a.timeLeft) - new Date(b.timeLeft);
+                    if (a.status.toLowerCase() !== 'open') return 1;
+                    if (b.status.toLowerCase() !== 'open') return -1;
+                    return new Date(a.quotation_deadline) - new Date(b.quotation_deadline);
                 });
             }
         }

@@ -1,4 +1,4 @@
-create type quote_status as enum ('ACTIVE', 'CANCELLED', 'EXPIRED');
+create type quote_status as enum ('ACTIVE', 'CANCELLED', 'EXPIRED', 'REJECTED');
 
 create table
   public.quotes (

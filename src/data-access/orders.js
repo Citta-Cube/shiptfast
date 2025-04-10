@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/superbase/server';
+import { createClient } from '@/lib/supabase/server';
 
 
 const supabase = createClient();
@@ -18,17 +18,23 @@ export async function getAllOrders() {
     .from('orders')
     .select(`
       *,
-      companies(*),
       origin_port:ports!origin_port_id(*),
-      destination_port:ports!destination_port_id(*)
+      destination_port:ports!destination_port_id(*),
+      quotes:quotes(count)
     `)
     .order('created_at', { ascending: false });
   
+    const orders = data.map(({ quotes, ...order }) => ({
+      ...order,
+      quote_count: quotes[0].count
+    }));
+
   if (error) throw error;
-  return data;
+  return orders;
 }
 
 export async function createOrder(orderData, selectedForwarderIds, documents = []) {
+  // TODO: Check if user has permission to create order from user session 
   const { data: order, error: orderError } = await supabase
     .rpc('create_order', {
       order_data: {
@@ -57,7 +63,6 @@ export async function createOrder(orderData, selectedForwarderIds, documents = [
     console.error('Error creating order with forwarders:', orderError);
     throw orderError;
   }
-  console.log("Order: ", order);
   return order;
 }
 
@@ -121,6 +126,51 @@ export async function getOrderQuotes(orderId) {
     return quotes;
   } catch (error) {
     console.error('Error fetching quotes:', error);
+    throw error;
+  }
+}
+
+export async function cancelOrder(orderId) {
+  try {
+    // TODO: Check if user has permission to cancel order from user session 
+    const { data: existingOrder, error: checkError } = await supabase
+      .from('orders')
+      .select('id, status')
+      .eq('id', orderId)
+      .single();
+
+    if (checkError) throw checkError;
+    if (!existingOrder) throw new Error('Order not found');
+    if (existingOrder.status === 'CANCELLED') throw new Error('Order is already cancelled');
+
+    // Proceed with cancellation
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'CANCELLED',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update any active quotes to cancelled
+    const { error: quotesError } = await supabase
+      .from('quotes')
+      .update({ 
+        status: 'CANCELLED',
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', orderId)
+      .eq('status', 'ACTIVE');
+
+    if (quotesError) throw quotesError;
+
+    return data;
+  } catch (error) {
+    console.error('Error cancelling order:', error);
     throw error;
   }
 }

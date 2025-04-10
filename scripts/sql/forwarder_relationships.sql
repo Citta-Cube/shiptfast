@@ -77,3 +77,43 @@ create or replace trigger update_forwarder_relationships_updated_at
     before update on public.forwarder_relationships
     for each row
     execute function public.update_updated_at();
+
+
+-- Function to automatically cancel quotes when forwarder is blacklisted/deactivated
+CREATE OR REPLACE FUNCTION cancel_forwarder_quotes()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Only proceed if status is changing to INACTIVE or BLACKLISTED
+    IF (TG_OP = 'UPDATE' AND 
+        OLD.status != NEW.status AND 
+        NEW.status IN ('INACTIVE', 'BLACKLISTED')) THEN
+        
+        -- Cancel all active quotes from this forwarder for this exporter
+        UPDATE quotes q
+        SET 
+            status = 'CANCELLED',
+            quote_details = jsonb_set(
+                COALESCE(quote_details, '{}'::jsonb),
+                '{cancellation_reason}',
+                CASE 
+                    WHEN NEW.status = 'BLACKLISTED' THEN '"FORWARDER_BLACKLISTED"'
+                    ELSE '"FORWARDER_DEACTIVATED"'
+                END::jsonb
+            )
+        FROM orders o
+        WHERE 
+            q.order_id = o.id
+            AND o.exporter_id = NEW.exporter_id
+            AND q.freight_forwarder_id = NEW.forwarder_id
+            AND q.status = 'ACTIVE';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for the function
+CREATE TRIGGER cancel_quotes_on_relationship_change
+    AFTER UPDATE ON forwarder_relationships
+    FOR EACH ROW
+    EXECUTE FUNCTION cancel_forwarder_quotes();

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/superbase/server';
+import { createClient } from '@/lib/supabase/server';
 
 const supabase = createClient();
 
@@ -94,4 +94,32 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
     }
     throw error;
   }
+}
+
+export async function deleteDocument(id) {
+  // First get the document to get the storage path
+  const { data: document, error: fetchError } = await supabase
+    .from('documents')
+    .select('metadata')
+    .eq('id', id)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // Delete from storage if path exists
+  if (document.metadata?.storagePath) {
+    const { error: storageError } = await supabase.storage
+      .from('documents')
+      .remove([document.metadata.storagePath]);
+
+    if (storageError) throw storageError;
+  }
+
+  // Delete from database
+  const { error: deleteError } = await supabase
+    .from('documents')
+    .delete()
+    .eq('id', id);
+
+  if (deleteError) throw deleteError;
 }

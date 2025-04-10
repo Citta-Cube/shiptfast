@@ -32,5 +32,6 @@ export const tableColumns = [
   { key: 'price', label: 'Price' },
   { key: 'estimatedTime', label: 'Est. Time' },
   { key: 'route', label: 'Route' },
+  { key: 'status', label: 'Status' },
   { key: 'actions', label: 'Actions', align: 'right' },
 ];

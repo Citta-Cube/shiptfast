@@ -1,16 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Ship, Plane, Package, Box, CircleX, AlertTriangle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { formatDateTimeToReadable, formatKeyToReadable } from "@/lib/utils";
+import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-const OrderSummary = ({ order, onCancelOrder }) => {
-  const ShipmentTypeIcon = order.shipment_type === 'SEA' ? Ship : Plane;
-  const LoadTypeIcon = order.load_type === 'FCL' ? Box : Package;
+const OrderSummary = ({ order }) => {
+  const router = useRouter();
+  const [isPending, setIsPending] = useState(false);
+
+  const handleCancelOrder = async () => {
+    try {
+      setIsPending(true);
+      const response = await fetch(`/api/orders/${order.id}?action=cancel`, {
+        method: 'PATCH',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to cancel order');
+      }
+
+      toast.success("Order Cancelled", {
+        description: "The order has been successfully cancelled.",
+      });
+      
+      router.refresh();
+    } catch (error) {
+      toast.error("Error", {
+        description: error.message,
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   return (
     <Card>
@@ -24,10 +63,44 @@ const OrderSummary = ({ order, onCancelOrder }) => {
             </Badge>
           )}
         </div>
-        {order.status !== 'cancelled' && (
-          <Button variant="ghost" className="hover:bg-muted/50">
-            <CircleX className="w-6 h-6 text-red-500" />
-          </Button>
+        {!['cancelled', 'closed'].includes(order.status.toLowerCase()) && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="hover:bg-muted/50"
+                disabled={isPending}
+              >
+                <CircleX className="w-6 h-6 text-red-500" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to cancel this order? This action cannot be undone.
+                  All active quotes will be cancelled and forwarders will be notified.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>No, keep it</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleCancelOrder}
+                  className="bg-red-500 hover:bg-red-600"
+                  disabled={isPending}
+                >
+                  {isPending ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm mr-2"></span>
+                      Cancelling...
+                    </>
+                  ) : (
+                    "Yes, cancel order"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-4">
@@ -42,7 +115,7 @@ const OrderSummary = ({ order, onCancelOrder }) => {
         <div>
           <p className="text-sm font-medium">Status</p>
           <div className="flex items-center gap-2">
-            <Badge>{order.status}</Badge>
+            <StatusBadge status={order.status} />
             {order.is_urgent && (
               <TooltipProvider>
                 <Tooltip>
@@ -64,11 +137,11 @@ const OrderSummary = ({ order, onCancelOrder }) => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <ShipmentTypeIcon className="h-4 w-4" />
+          <ShipmentTypeIcon type={order.shipment_type} />
           <p>{order.shipment_type.toUpperCase()} Freight</p>
         </div>
         <div className="flex items-center gap-2">
-          <LoadTypeIcon className="h-4 w-4" />
+          <LoadTypeIcon type={order.load_type} />
           <p>{order.load_type}</p>
         </div>
         <div className="col-span-2 flex items-center space-x-2">
