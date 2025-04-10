@@ -4,7 +4,7 @@ globs:
 alwaysApply: true
 ---
 **Context**
-This freight management system connects companies with freight agents for shipping services. Companies create orders with cargo details while freight agents submit quotes. Features include order tracking, quote management, and communication tools.
+This freight management system connects companies with freight agents for shipping services. Companies create orders with cargo details while freight agents submit quotes. Features include order tracking, quote management, and communication tools. Freight agents(forwarders) and exporters have different views of pages when logged in, this is handled by using a routing based on company type for certain views such as /dashboard redirects to internal company type-specific route /forwarders/dashboard or /exporter/dashboard however we may have common pages or components such as /profile.
 
 **Project Structure**
 ```
@@ -16,7 +16,8 @@ freight-management/
 │   │   ├── api/           # API routes for orders, forwarders, documents
 │   │   ├── auth/          # Authentication UI
 │   │   ├── dashboard/     # Main dashboard interface
-│   │   ├── forwarders/    # Freight forwarder profiles and listings
+│   │   ├── forwarders/    # Freight forwarder specific pages
+│   │   ├── exporter/      # Exporter specific pages
 │   │   ├── orders/        # Order management pages
 │   │   ├── profile/       # User profiles
 │   ├── components/        # UI components by feature
