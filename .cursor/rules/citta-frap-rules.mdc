@@ -3,7 +3,12 @@ description:
 globs: 
 alwaysApply: true
 ---
-**Context**
+---
+description: Project context & structure
+globs: 
+alwaysApply: true
+---
+# Project Context
 This freight management system connects companies with freight agents for shipping services. Companies create orders with cargo details while freight agents submit quotes. Features include order tracking, quote management, and communication tools. Freight agents(forwarders) and exporters have different views of pages when logged in, this is handled by using a routing based on company type for certain views such as /dashboard redirects to internal company type-specific route /forwarders/dashboard or /exporter/dashboard however we may have common pages or components such as /profile.
 
 **Project Structure**

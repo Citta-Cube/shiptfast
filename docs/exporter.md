@@ -1,0 +1,11 @@
+# Task List
+- Settings 
+    - Company Profile: edit if role is admin 
+- Dashboard 
+    - Allow users to view multiple order types - defaul view  pending and open 
+- Create Order
+    - Air freight - Palletized cargo
+- View Order
+    - View Palletized cargo order details
+- Review Orders
+    - Review closed orders mulit step form 

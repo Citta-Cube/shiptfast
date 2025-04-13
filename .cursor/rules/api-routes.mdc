@@ -1,0 +1,130 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: Guidelines for implementing Next.js API routes with Supabase
+globs: src/app/api/**/*
+alwaysApply: false
+---
+# Next.js API Routes Implementation Guidelines
+
+## Structure & Naming
+- Place API routes in `src/app/api/[resource]/route.js` for collection endpoints
+- Use `src/app/api/[resource]/[id]/route.js` for resource-specific operations
+- Implement HTTP methods as separate exported functions: `GET`, `POST`, `PUT`, `DELETE`, etc.
+- Name files consistently with the resource they represent
+
+## Authentication & Authorization
+
+```javascript
+// Import authentication
+import { createClient } from '@/lib/supabase/server';
+
+export async function GET(request, { params }) {
+  // Initialize Supabase client
+  const supabase = createClient();
+  
+  // Get current session
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  // Require authentication
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  
+  // Continue with authenticated route handler...
+}
+```
+
+## Data Access
+- Always use the data-access layer to interact with Supabase
+- Never use direct database queries in API routes
+- Centralize all database operations in the data-access directory
+
+```javascript
+// Bad - direct database query in API route
+export async function GET(request) {
+  const supabase = createClient();
+  const { data, error } = await supabase.from('documents').select('*');
+  // ...
+}
+
+// Good - using data-access layer
+import { getDocuments } from '@/data-access/document';
+
+export async function GET(request) {
+  const documents = await getDocuments();
+  // ...
+}
+```
+
+## Error Handling
+- Always use try/catch blocks
+- Return appropriate HTTP status codes
+- Include meaningful error messages
+- Log errors on the server side
+
+```javascript
+export async function POST(request) {
+  try {
+    const data = await request.json();
+    
+    // Validate input data
+    if (!data.requiredField) {
+      return NextResponse.json(
+        { error: 'Required field is missing' },
+        { status: 400 }
+      );
+    }
+    
+    const result = await createResource(data);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('API error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Request Validation
+- Validate request parameters and body before processing
+- Use structured validation with descriptive error messages
+- Return 400 Bad Request for invalid inputs
+
+## Response Formatting
+- Always return NextResponse.json() with consistent structure
+- For success: `{ data: resultData }`
+- For errors: `{ error: 'Error message' }`
+- Include appropriate HTTP status codes
+
+## Performance Considerations
+- Limit the amount of data returned
+- Use pagination for large data sets
+- Consider caching strategies for frequently accessed data
+- Use query parameters for filtering and pagination
+
+```javascript
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '10');
+  const offset = (page - 1) * limit;
+  
+  const { data, pagination } = await getResourcesPaginated(offset, limit);
+  
+  return NextResponse.json({
+    data,
+    pagination: {
+      page,
+      limit,
+      total: pagination.total,
+      totalPages: Math.ceil(pagination.total / limit)
+    }
+  });
+}
+```
