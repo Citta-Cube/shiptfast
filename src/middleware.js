@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { getUserCompanyMembership } from '@/data-access/companies'
-import { getCurrentUser } from '@/data-access/users'
 
 export async function middleware(request) {
   let supabaseResponse = NextResponse.next({
@@ -30,7 +29,9 @@ export async function middleware(request) {
   )
 
   // IMPORTANT: auth.getUser() must be called FIRST
-  const user = await getCurrentUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // Handle authentication-related redirects
   const isAuthRoute = request.nextUrl.pathname.startsWith('/auth') || 
