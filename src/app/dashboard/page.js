@@ -1,30 +1,18 @@
 // @/app/dashboard/page.js
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getUserCompanyMembership } from '@/data-access/companies';
+import { getCurrentUser } from '@/data-access/users';
 
 export default async function DashboardPage({ searchParams }) {
-  const supabase = createClient();
-  
-  // Get user and their role
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get authenticated user
+  const user = await getCurrentUser();
   
   if (!user) {
     redirect('/auth/signin');
   }
   
-  // Get user's company membership with company details
-  const { data: companyMembership } = await supabase
-    .from('company_members')
-    .select(`
-      id,
-      companies:company_id (
-        id,
-        type
-      )
-    `)
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single();
+  // Get user's company membership with company details using data access layer
+  const companyMembership = await getUserCompanyMembership(user.id);
     
   // Determine which dashboard to show based on company type
   if (!companyMembership?.companies?.type) {

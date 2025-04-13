@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
+import { getUserCompanyMembership } from '@/data-access/companies'
+import { getCurrentUser } from '@/data-access/users'
 
 export async function middleware(request) {
   let supabaseResponse = NextResponse.next({
@@ -28,9 +30,7 @@ export async function middleware(request) {
   )
 
   // IMPORTANT: auth.getUser() must be called FIRST
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
 
   // Handle authentication-related redirects
   const isAuthRoute = request.nextUrl.pathname.startsWith('/auth') || 
@@ -56,7 +56,34 @@ export async function middleware(request) {
     return NextResponse.redirect(url)
   }
 
-  // Role-specific routing already implemented in the /dashboard page handler
+  // If user is authenticated, enforce role-based access control
+  if (user) {
+    // Check if user is attempting to access role-specific pages
+    const isForwarderRoute = request.nextUrl.pathname.startsWith('/forwarders');
+    const isExporterRoute = request.nextUrl.pathname.startsWith('/exporters');
+    
+    if (isForwarderRoute || isExporterRoute) {
+      // Get user's company type
+      const companyMembership = await getUserCompanyMembership(user.id)   
+
+      if (companyMembership?.companies?.type) {
+        const companyType = companyMembership.companies.type;
+        
+        // Redirect if user is accessing the wrong role's routes
+        if (isForwarderRoute && companyType !== 'FREIGHT_FORWARDER') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/dashboard';
+          return NextResponse.redirect(url);
+        }
+        
+        if (isExporterRoute && companyType !== 'EXPORTER') {
+          const url = request.nextUrl.clone();
+          url.pathname = '/dashboard';
+          return NextResponse.redirect(url);
+        }
+      }
+    }
+  }
   
   return supabaseResponse
 }

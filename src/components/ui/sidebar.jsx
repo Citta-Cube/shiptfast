@@ -1,35 +1,14 @@
 "use client";
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Package2, Bell, LogOut } from 'lucide-react'
-import { useSession, signOut } from "next-auth/react"
-import { logout } from '@/app/auth/actions'
+import { Package2, Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { dashboardConfig } from '@/config/dashboard'
+import { exporterConfig, forwarderConfig } from '@/config/dashboard'
 import SidebarLink from '@/components/ui/sidebar-link'
 
-const Sidebar = () => {
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const router = useRouter()
-  const session = null
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true)
-    try {
-      await logout()
-      // The server action will handle the redirect, but we can also do it here as a fallback
-      router.push('/auth/signin')
-    } catch (error) {
-      console.error('Logout failed:', error)
-      // Handle error (e.g., show a notification to the user)
-    } finally {
-      setIsLoggingOut(false)
-    }
-  }
+const Sidebar = ({ userType = 'EXPORTER' }) => {
+  // Select the appropriate config based on userType
+  const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
 
   return (
     <div className="hidden border-r bg-muted/40 md:block">
@@ -46,7 +25,7 @@ const Sidebar = () => {
         </div>
         <div className="flex-1">
             <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-                {dashboardConfig.sidebarNav.map((item, index) => (
+                {config.sidebarNav.map((item, index) => (
                     <SidebarLink key={index} item={item} />
                 ))}
             </nav>
@@ -69,7 +48,6 @@ const Sidebar = () => {
           </div>
         </div> */}
       </div>
-      
     </div>
   )
 }

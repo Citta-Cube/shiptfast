@@ -7,13 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { dashboardConfig } from '@/config/dashboard'
+import { exporterConfig, forwarderConfig } from '@/config/dashboard'
 import { logout } from '@/app/auth/actions'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
 
-const Header = () => {
+const Header = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
+  
+  // Select the appropriate config based on userType
+  const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -40,7 +43,7 @@ const Header = () => {
         </SheetTrigger>
         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
           <nav className="flex flex-col gap-4">
-            {dashboardConfig.sidebarNav.map((item, index) => (
+            {config.sidebarNav.map((item, index) => (
               <a
                 key={index}
                 href={item.href}
@@ -66,7 +69,7 @@ const Header = () => {
         </form>
       </div>
       <nav className="hidden gap-4 md:flex">
-        {dashboardConfig.mainNav.map((item, index) => (
+        {config.mainNav.map((item, index) => (
           <a
             key={index}
             href={item.href}
