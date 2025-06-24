@@ -16,7 +16,7 @@ const ForwarderOrderCard = ({ order }) => {
       return {
         badge: null,
         actionText: 'Submit Quote',
-        actionHref: `/forwarders/orders/${order.id}/quote/new`
+        actionHref: `/forwarders/orders/${order.id}`
       };
     }
     

@@ -22,9 +22,10 @@ const PortSelect = ({ label, id, value, onChange, shipmentType }) => {
   const { ports = [], isLoading, fetchNextPage, hasNextPage } = usePorts(debouncedSearchTerm, shipmentType?.toUpperCase());
 
   const handleSelect = useCallback((portId) => {
-    onChange(id, portId);
+    const selectedPort = ports.find(port => port.id === portId);
+    onChange(id, portId, selectedPort);
     setOpen(false);
-  }, [onChange, id]);
+  }, [onChange, id, ports]);
 
   const selectedPort = ports.find(port => port.id === value);
 
