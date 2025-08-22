@@ -1,8 +1,8 @@
-// @/components/dashboard/OrderCard.js
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
 import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import UrgentIndicator from './UrgentIndicator';
@@ -57,18 +57,19 @@ const OrderCard = ({ order }) => {
               <span className="text-sm font-medium">{calculateTimeLeft(order.quotation_deadline)}</span>
             </div>
           )}
-          <div className="col-span-2 flex flex-col space-y-1">
-            <span className="text-xs text-muted-foreground">Quotations Received</span>
-            <span className="text-sm font-medium">{order.quote_count}</span>
-          </div>
         </div>
       </CardContent>
-      <CardFooter>
+      <Separator />
+      <CardFooter className="flex items-center justify-between mt-4">
+        <div className="flex flex-col space-y-1">
+          <span className="text-xs text-muted-foreground">Quotations Received</span>
+          <span className="text-sm font-medium">{order.quote_count}</span>
+        </div>
         <Link href={`/orders/${order.id}`} passHref>
-            <Button variant="outline" className="w-full">
-              View Details
-            </Button>
-          </Link>
+          <Button variant="secondary">
+            View Details
+          </Button>
+        </Link>
       </CardFooter>
     </Card>
   );

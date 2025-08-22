@@ -1,7 +1,6 @@
-// app/auth/signin/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,31 +8,25 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { login } from '@/app/auth/actions';
+import { toast } from "sonner";
+import { signInAction } from '@/app/auth/actions';
 
 export default function SignIn() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleSubmit = async (formData) => {
     setError('');
-
-    try {
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('password', password);
-
-      await login(formData);
-      // The server action will handle the redirect
-    } catch (error) {
-      setError(error.message || 'Invalid email or password. Please try again.');
-      setIsLoading(false);
-    }
+    
+    startTransition(async () => {
+      const result = await signInAction(formData);
+      
+      if (result?.error) {
+        setError(result.error);
+        toast.error(result.error);
+      }
+    });
   };
 
   return (
@@ -46,15 +39,14 @@ export default function SignIn() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form action={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input 
                 id="email" 
+                name="email"
                 type="email" 
                 placeholder="you@example.com"
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
                 required 
               />
             </div>
@@ -62,10 +54,9 @@ export default function SignIn() {
               <Label htmlFor="password">Password</Label>
               <Input 
                 id="password" 
+                name="password"
                 type="password" 
                 placeholder="••••••••"
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
                 required 
               />
             </div>
@@ -78,9 +69,9 @@ export default function SignIn() {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading}
+              disabled={isPending}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isPending ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
         </CardContent>

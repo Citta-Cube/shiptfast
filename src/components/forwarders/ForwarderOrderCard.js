@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
 import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import UrgentIndicator from '@/components/dashboard/UrgentIndicator';
 import Link from 'next/link';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Clock } from 'lucide-react';
 
 const ForwarderOrderCard = ({ order }) => {
   // Determine the quote status and action text
@@ -57,6 +58,33 @@ const ForwarderOrderCard = ({ order }) => {
   };
   
   const { badge, actionText, actionHref } = getQuoteStatusAndAction();
+
+  // Determine what to show in footer
+  const getFooterInfo = () => {
+    // Show time remaining if order is open and not submitted
+    if (order.status === 'OPEN' && !order.is_submitted) {
+      return {
+        type: 'time',
+        label: 'Time Left for Bidding',
+        value: calculateTimeLeft(order.quotation_deadline),
+        icon: Clock
+      };
+    }
+    
+    // Show quote if available
+    if (order.quote) {
+      return {
+        type: 'quote',
+        label: 'Your Quote',
+        value: order.quote.net_freight_cost,
+        icon: DollarSign
+      };
+    }
+    
+    return null;
+  };
+
+  const footerInfo = getFooterInfo();
 
   return (
     <Card className={`w-full ${order.quote_status === 'selected' ? 'bg-green-600 bg-opacity-20' : ''}`}>
@@ -110,34 +138,35 @@ const ForwarderOrderCard = ({ order }) => {
             </Avatar>
             <span className="text-sm font-medium">{order.destination_port.port_code}</span>
           </div>
-          
-          {order.status === 'OPEN' && !order.is_submitted && (
-            <div className="col-span-2 flex flex-col space-y-1">
-              <span className="text-xs text-muted-foreground">Time Left for Bidding</span>
-              <span className="text-sm font-medium">{calculateTimeLeft(order.quotation_deadline)}</span>
-            </div>
-          )}
-          
-          {order.quote && (
-            <div className="col-span-2 flex flex-col space-y-1">
-              <span className="text-xs text-muted-foreground">Your Quote</span>
-              <span className="text-sm font-medium flex items-center">
-                <DollarSign className="h-4 w-4 mr-1" />
-                {order.quote.net_freight_cost}
-              </span>
-            </div>
-          )}
         </div>
       </CardContent>
-      <CardFooter>
-        <Link href={actionHref} passHref>
-          <Button variant="outline" className="w-full">
-            {actionText}
-          </Button>
-        </Link>
+      
+      <Separator />
+      
+      <CardFooter className="pt-4">
+        <div className="flex w-full items-center justify-between">
+          {footerInfo && (
+            <div className="flex items-center space-x-2">
+              <footerInfo.icon className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">{footerInfo.label}</span>
+                <span className="text-sm font-medium">
+                  {footerInfo.type === 'quote' && <DollarSign className="h-3 w-3 inline mr-1" />}
+                  {footerInfo.value}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <Link href={actionHref} passHref>
+            <Button variant="secondary" className={footerInfo ? '' : 'w-full'}>
+              {actionText}
+            </Button>
+          </Link>
+        </div>
       </CardFooter>
     </Card>
   );
 };
 
-export default ForwarderOrderCard; 
+export default ForwarderOrderCard;

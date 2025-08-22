@@ -17,7 +17,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectValue placeholder="Shipment Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="all">All Shipment Types</SelectItem>
           <SelectItem value="sea">Sea Freight</SelectItem>
           <SelectItem value="air">Air Freight</SelectItem>
         </SelectContent>
@@ -27,7 +27,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectValue placeholder="Load Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="all">All Load Types</SelectItem>
           <SelectItem value="fcl">FCL</SelectItem>
           <SelectItem value="lcl">LCL</SelectItem>
         </SelectContent>

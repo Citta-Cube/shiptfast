@@ -4,25 +4,32 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
-export async function login(formData) {
+export async function signInAction(formData) {
   const email = formData.get('email')
   const password = formData.get('password')
 
   const supabase = createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
-  if (error) {
-    throw new Error(error.message)
+  if (error || !user) {
+    // Return error instead of redirecting
+    return {
+      error: error?.message || "Invalid email or password",
+    };
   }
 
-  redirect('/dashboard')
+  // Only redirect on successful login
+  return redirect('/dashboard')
 }
 
-export async function signup(formData) {
+export async function signUpAction(formData) {
   const email = formData.get('email')
   const password = formData.get('password')
   const name = formData.get('name')
@@ -40,25 +47,29 @@ export async function signup(formData) {
   })
 
   if (error) {
-    throw new Error(error.message)
+    return {
+      error: error.message
+    };
   }
 
   // Redirect to a confirmation page or login
-  redirect('/auth/confirmation')
+  return redirect('/auth/confirmation')
 }
 
-export async function logout() {
+export async function signOutAction() {
   const supabase = createClient()
   const { error } = await supabase.auth.signOut()
   
   if (error) {
-    throw new Error(error.message)
+    return {
+      error: error.message
+    };
   }
   
-  redirect('/')
+  return redirect('/')
 }
 
-export async function forgotPassword(formData) {
+export async function forgotPasswordAction(formData) {
   const supabase = createClient()
   
   const email = formData.get('email')
@@ -68,9 +79,14 @@ export async function forgotPassword(formData) {
   })
 
   if (error) {
-    throw new Error(error.message)
+    return {
+      error: error.message
+    };
   }
 
-  // If successful, return a message
-  return { message: 'Password reset email sent. Check your inbox.' }
+  // If successful, return a success message
+  return { 
+    success: true,
+    message: 'Password reset email sent. Check your inbox.' 
+  }
 }
