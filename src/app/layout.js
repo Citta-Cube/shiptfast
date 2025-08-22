@@ -1,5 +1,5 @@
 // @/app/layout
-import { Inter as FontSans } from "next/font/google"
+import { IBM_Plex_Sans as FontSans } from "next/font/google"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
@@ -8,6 +8,7 @@ import "./globals.css"
 
 const fontSans = FontSans({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
 })
 
@@ -32,10 +33,17 @@ export default function RootLayout({ children }) {
           enableSystem
           disableTransitionOnChange
         >
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          <Toaster />
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+          <Toaster
+            theme="light"
+            toastOptions={{
+              classNames: {
+                error: 'bg-red-500 text-white',
+              },
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>
