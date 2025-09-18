@@ -2,14 +2,11 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { signInAction } from '@/app/auth/actions';
+import { Loader2 } from "lucide-react";
 
 export default function SignIn() {
   const [isPending, startTransition] = useTransition();
@@ -18,10 +15,8 @@ export default function SignIn() {
 
   const handleSubmit = async (formData) => {
     setError('');
-    
     startTransition(async () => {
       const result = await signInAction(formData);
-      
       if (result?.error) {
         setError(result.error);
         toast.error(result.error);
@@ -30,71 +25,66 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Card className="w-[350px] shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                name="email"
-                type="email" 
-                placeholder="you@example.com"
-                required 
-              />
-            </div>
-            <div className="space-y-2">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background/50 to-background">
+      <div className="relative w-full max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+        <form action={handleSubmit} className="flex-1 flex flex-col min-w-64">
+          <h1 className="text-2xl font-medium">Sign in</h1>
+          <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
+            <Label htmlFor="email">Email</Label>
+            <Input 
+              name="email" 
+              placeholder="you@example.com" 
+              required 
+              id="email"
+              type="email"
+            />
+            <div className="flex justify-between items-center">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                name="password"
-                type="password" 
-                placeholder="••••••••"
-                required 
-              />
+              <button
+                type="button"
+                className="text-xs text-foreground underline"
+                onClick={() => router.push('/auth/forgot-password')}
+              >
+                Forgot Password?
+              </button>
             </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Input
+              type="password"
+              name="password"
+              placeholder="Your password"
+              required
+              id="password"
+            />
+            <button
+              type="submit"
+              className="bg-primary text-primary-foreground py-2 px-4 rounded mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
               disabled={isPending}
             >
-              {isPending ? 'Signing In...' : 'Sign In'}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-sm text-center text-gray-500">
-            Don't have an account?{' '}
-            <Button 
-              variant="link" 
-              className="p-0" 
-              onClick={() => router.push('/auth/signup')}
-            >
-              Sign Up
-            </Button>
+              {isPending ? (
+                <>
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  Signing In...
+                </>
+              ) : (
+                "Sign in"
+              )}
+            </button>
+            {error && (
+              <div className="text-red-500 text-sm mt-2">{error}</div>
+            )}
+            <div className="text-sm text-center text-gray-500 mt-4">
+              Don't have an account?{' '}
+              <button
+                type="button"
+                className="text-primary underline p-0 bg-transparent"
+                onClick={() => router.push('/auth/signup')}
+              >
+                Sign Up
+              </button>
+            </div>
           </div>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => router.push('/auth/forgot-password')}
-          >
-            Forgot Password?
-          </Button>
-        </CardFooter>
-      </Card>
+        </form>
+      </div>
     </div>
   );
 }
