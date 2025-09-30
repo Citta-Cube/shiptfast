@@ -14,6 +14,7 @@ export async function getDocumentById(id) {
 }
 
 export async function createDocument(document) {
+  console.log("document", document);
   const { data, error } = await supabase
     .from('documents')
     .insert(document)
@@ -48,10 +49,13 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
       files.map(async (file, index) => {
         const metadata = documentMetadata[index] || {};
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
-        const filePath = `${customPath || entityType.toLowerCase()}s/${fileName}`;
+        const fileBaseName = `${Date.now()}-${crypto.randomUUID()}`;
+        const fileName = `${fileBaseName}.${fileExt}`;
+        // Base dir (order → orders/, company → companies/, or customPath)
+        const baseDir = customPath || `${entityType.toLowerCase()}s`;
+        // Final storage path: <baseDir>/<uuid>/<uuid.ext>
+        const filePath = `${baseDir}/${fileName}`;
 
-        // Upload file to Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from('documents')
           .upload(filePath, file, {
@@ -63,7 +67,6 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
           throw new Error(`Failed to upload document: ${uploadError.message}`);
         }
 
-        // Get the public URL for the uploaded file
         const { data: { publicUrl } } = supabase.storage
           .from('documents')
           .getPublicUrl(filePath);
@@ -86,40 +89,76 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
 
     return { documents, uploadedPaths: documents.map(doc => doc.metadata.storagePath) };
   } catch (error) {
-    // Clean up any uploaded files if there's an error
     if (error.uploadedPaths?.length > 0) {
-      await supabase.storage
-        .from('documents')
-        .remove(error.uploadedPaths);
+      await supabase.storage.from('documents').remove(error.uploadedPaths);
     }
     throw error;
   }
 }
 
+/**
+ * Extracts the storage path from a Supabase storage URL
+ * @param {string} fileUrl - The public URL of the file
+ * @returns {string|null} - The storage path or null if extraction fails
+ */
+function extractStoragePathFromUrl(fileUrl) {
+  try {
+    const url = new URL(fileUrl);
+    console.log("URL", url);
+    const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/);
+    console.log("pathMatch", pathMatch);
+    return pathMatch ? pathMatch[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes a document + its file from Supabase
+ * @param {string} id - document UUID
+ */
 export async function deleteDocument(id) {
-  // First get the document to get the storage path
+  //  Get document row
   const { data: document, error: fetchError } = await supabase
     .from('documents')
-    .select('metadata')
+    .select('metadata, file_url')
     .eq('id', id)
     .single();
+  
+  console.log("Got document row:", document);
 
   if (fetchError) throw fetchError;
+  if (!document) throw new Error("Document not found");
 
-  // Delete from storage if path exists
-  if (document.metadata?.storagePath) {
-    const { error: storageError } = await supabase.storage
-      .from('documents')
-      .remove([document.metadata.storagePath]);
+  const storagePath =
+    document?.metadata?.storagePath ||
+    extractStoragePathFromUrl(document.file_url);
 
-    if (storageError) throw storageError;
+  console.log("storage Path:", storagePath);
+
+  if (!storagePath) {
+    throw new Error("No valid storage path found for document");
+  }
+  
+  // Delete file from storage
+  const { error: storageError } = await supabase.storage
+    .from('documents')
+    .remove([storagePath]);
+  
+  if (storageError) {
+    throw new Error(`Failed to delete file from storage: ${storageError.message}`);
   }
 
-  // Delete from database
-  const { error: deleteError } = await supabase
+  // Delete DB record
+  const { error: dbError } = await supabase
     .from('documents')
     .delete()
     .eq('id', id);
 
-  if (deleteError) throw deleteError;
+  if (dbError) {
+    throw new Error(`Failed to delete document row: ${dbError.message}`);
+  }
+
+  return { success: true, deletedId: id };
 }
+
