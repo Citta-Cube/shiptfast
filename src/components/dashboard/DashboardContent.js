@@ -16,6 +16,7 @@ const DashboardContent = ({ initialFilters = {} }) => {
     const [viewMode, setViewMode] = useState('grid');
     const [activeFilters, setActiveFilters] = useState({
         searchTerm: '',
+      tradeType: initialFilters.tradeType || 'all',
         shipmentType: initialFilters.shipmentType || 'all',
         loadType: initialFilters.loadType || 'all',
         status: initialFilters.status || 'all',
@@ -24,6 +25,7 @@ const DashboardContent = ({ initialFilters = {} }) => {
 
     useEffect(() => {
         fetchOrders();
+        fetchMyCompany();
     }, []);
 
     useEffect(() => {
@@ -33,7 +35,9 @@ const DashboardContent = ({ initialFilters = {} }) => {
     useEffect(() => {
         const queryParams = new URLSearchParams();
         
-        if (activeFilters.shipmentType !== 'all') 
+    if (activeFilters.tradeType !== 'all') 
+        queryParams.set('tradeType', activeFilters.tradeType);
+    if (activeFilters.shipmentType !== 'all') 
             queryParams.set('shipmentType', activeFilters.shipmentType);
         if (activeFilters.loadType !== 'all') 
             queryParams.set('loadType', activeFilters.loadType);
@@ -66,6 +70,21 @@ const DashboardContent = ({ initialFilters = {} }) => {
         }
     };
 
+    const [exporterCountryCode, setExporterCountryCode] = useState(null);
+    const [companyType, setCompanyType] = useState(null);
+
+    const fetchMyCompany = async () => {
+        try {
+            const res = await fetch('/api/me/company');
+            if (!res.ok) return; // non-blocking for non-exporters/unauth
+            const data = await res.json();
+            setCompanyType(data.type || null);
+            setExporterCountryCode((data.country_code || '').toUpperCase() || null);
+        } catch (e) {
+            // ignore
+        }
+    };
+
     const applyFilters = useCallback(() => {
         let result = [...orders];
 
@@ -76,7 +95,29 @@ const DashboardContent = ({ initialFilters = {} }) => {
             );
         }
 
-        // Apply shipment type filter
+        // Apply trade type using exporter country vs destination country if user is EXPORTER
+        if (activeFilters.tradeType !== 'all') {
+            if (companyType === 'EXPORTER' && exporterCountryCode) {
+                result = result.filter(order => {
+                    const destCc = order?.destination_port?.country_code?.toUpperCase?.() || '';
+                    const isImport = destCc === exporterCountryCode;
+                    const isExport = !isImport;
+                    return activeFilters.tradeType === 'import' ? isImport : isExport;
+                });
+            } else {
+                // Fallback based on incoterms if company or country unknown
+                const EXPORT_INCOTERMS = new Set(['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP']);
+                const IMPORT_INCOTERMS = new Set(['DAP','DPU','DDP']);
+                result = result.filter(order => {
+                    const inc = String(order.incoterm || '').toUpperCase();
+                    const isExport = EXPORT_INCOTERMS.has(inc);
+                    const isImport = IMPORT_INCOTERMS.has(inc);
+                    return activeFilters.tradeType === 'export' ? isExport : isImport;
+                });
+            }
+        }
+
+    // Apply shipment type filter
         if (activeFilters.shipmentType !== 'all') {
             result = result.filter(order => order.shipment_type.toLowerCase() === activeFilters.shipmentType);
         }
@@ -147,6 +188,7 @@ const DashboardContent = ({ initialFilters = {} }) => {
         <SearchAndFilter
             activeFilters={activeFilters}
             onSearch={(value) => handleFilterChange('searchTerm', value)}
+            onFilterTradeType={(value) => handleFilterChange('tradeType', value)}
             onFilterShipmentType={(value) => handleFilterChange('shipmentType', value)}
             onFilterLoadType={(value) => handleFilterChange('loadType', value)}
             onFilterStatus={(value) => handleFilterChange('status', value)}
