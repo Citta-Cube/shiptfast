@@ -35,8 +35,8 @@ const QuoteManagementSection = ({
     new Date(b.created_at) - new Date(a.created_at)
   );
   
-  const activeQuote = quotes.find(q => q.status === 'ACTIVE');
-  const canSubmitNewQuote = !activeQuote;
+  // Allow multiple quotes: always allow submitting a new quote
+  const canSubmitNewQuote = true;
   
   const handleOpenDialog = (quote = null) => {
     setSelectedQuote(quote);
@@ -429,19 +429,7 @@ const QuoteManagementSection = ({
           </div>
         )}
         
-        {!canSubmitNewQuote && !openQuoteId && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start">
-              <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 mr-2" />
-              <div>
-                <p className="font-medium text-yellow-800">You have an active quote</p>
-                <p className="text-sm text-yellow-700">
-                  You already have an active quote for this order. You can edit or cancel it to submit a new one.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Multiple quotes enabled: no restriction notice */}
       </CardContent>
       
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

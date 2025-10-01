@@ -82,93 +82,47 @@ export async function POST(request) {
       );
     }
     
-    // Check if there's an existing active quote to update
-    const { data: existingQuotes } = await supabase
+    // Always create a new quote (allow multiple quotes per forwarder per order)
+    const { data: newQuote, error: insertError } = await supabase
       .from('quotes')
-      .select('*')
-      .eq('order_id', orderId)
-      .eq('freight_forwarder_id', forwarderId)
-      .eq('status', 'ACTIVE');
-      
-    let quoteId;
-    
-    if (existingQuotes && existingQuotes.length > 0) {
-      // Update existing quote
-      const existingQuote = existingQuotes[0];
-      
-      // Create amendment record if price changed
-      if (existingQuote.net_freight_cost !== netFreightCost) {
-        await supabase.from('quote_amendments').insert({
-          quote_id: existingQuote.id,
-          previous_net_freight_cost: existingQuote.net_freight_cost,
-          new_net_freight_cost: netFreightCost,
-          reason: 'Updated by forwarder'
-        });
+      .insert({
+        order_id: orderId,
+        freight_forwarder_id: forwarderId,
+        net_freight_cost: netFreightCost,
+        estimated_time_days: estimatedTimeDays,
+        validity_period_days: validityPeriodDays,
+        note: notes,
+        quote_details: quoteDetails || {},
+        status: 'ACTIVE'
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+    const quoteId = newQuote.id;
+
+    // Add transshipment ports if provided
+    if (transshipmentPorts && transshipmentPorts.length > 0) {
+      const formattedPorts = transshipmentPorts.map(port => ({
+        quote_id: quoteId,
+        port_id: port.port_id,
+        sequence_number: port.sequence_number || 1
+      }));
+      const { error: portsError } = await supabase
+        .from('transshipment_ports')
+        .insert(formattedPorts);
+      if (portsError) {
+        console.error('Failed to add transshipment ports:', portsError);
       }
-      
-      // Update quote
-      const { data: updatedQuote, error: updateError } = await supabase
-        .from('quotes')
-        .update({
-          net_freight_cost: netFreightCost,
-          estimated_time_days: estimatedTimeDays,
-          validity_period_days: validityPeriodDays,
-          note: notes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingQuote.id)
-        .select()
-        .single();
-        
-      if (updateError) throw updateError;
-      quoteId = existingQuote.id;
-    } else {
-      // Create new quote
-      const { data: newQuote, error: insertError } = await supabase
-        .from('quotes')
-        .insert({
-          order_id: orderId,
-          freight_forwarder_id: forwarderId,
-          net_freight_cost: netFreightCost,
-          estimated_time_days: estimatedTimeDays,
-          validity_period_days: validityPeriodDays,
-          note: notes,
-          quote_details: quoteDetails || {},
-          status: 'ACTIVE'
-        })
-        .select()
-        .single();
-        
-      if (insertError) throw insertError;
-      quoteId = newQuote.id;
-      
-      // Add transshipment ports if provided
-      if (transshipmentPorts && transshipmentPorts.length > 0) {
-        // Format transshipment ports with the new quote id
-        const formattedPorts = transshipmentPorts.map(port => ({
-          quote_id: quoteId,
-          port_id: port.port_id,
-          sequence_number: port.sequence_number || 1
-        }));
-        
-        // Insert transshipment ports
-        const { error: portsError } = await supabase
-          .from('transshipment_ports')
-          .insert(formattedPorts);
-          
-        if (portsError) {
-          console.error('Failed to add transshipment ports:', portsError);
-        }
-      }
-      
-      // Update order_selected_forwarders to mark as submitted
-      await supabase
-        .from('order_selected_forwarders')
-        .update({ is_submitted: true })
-        .eq('order_id', orderId)
-        .eq('freight_forwarder_id', forwarderId);
     }
-    
+
+    // Mark forwarder as submitted for this order (idempotent)
+    await supabase
+      .from('order_selected_forwarders')
+      .update({ is_submitted: true })
+      .eq('order_id', orderId)
+      .eq('freight_forwarder_id', forwarderId);
+
     return NextResponse.json({ success: true, quoteId });
     
   } catch (error) {

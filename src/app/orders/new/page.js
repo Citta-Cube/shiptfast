@@ -168,6 +168,11 @@ const NewOrderPage = () => {
       
       const data = await response.json();
       setFreightForwarders(data);
+      // By default, select all loaded forwarders. Users can customize afterwards via UI toggles.
+      setOrderData(prev => ({
+        ...prev,
+        selectedForwarders: Array.isArray(data) ? data.map(f => f.id) : []
+      }));
     } catch (error) {
       console.error('Error fetching freight forwarders:', error);
       toast.error("Failed to load freight forwarders");

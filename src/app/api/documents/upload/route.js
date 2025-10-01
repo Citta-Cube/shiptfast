@@ -25,6 +25,17 @@ export async function POST(request) {
       );
     }
 
+    // Decide base path based on entity type so structure becomes:
+    // documents/orders/{entityId}/{generatedFileBase}/{generatedFileBase}.{ext}
+    let customPath = '';
+    if (entityType === 'ORDER') {
+      customPath = `orders/${entityId}`;
+    } else if (entityType === 'COMPANY') {
+      customPath = `companies/${entityId}`;
+    } else if (entityType) {
+      customPath = `${entityType.toLowerCase()}s/${entityId}`;
+    }
+
     // Upload file to storage
     const { documents } = await uploadDocuments(
       [file],
@@ -33,7 +44,8 @@ export async function POST(request) {
         description,
         additionalInfo: metadata
       }],
-      entityType
+      entityType,
+      customPath
     );
 
     // Create document record in database
