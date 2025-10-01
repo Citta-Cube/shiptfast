@@ -1,7 +1,11 @@
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { Card, CardContent } from "@/components/ui/card";
+'use client'
+
+import { useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import { Card, CardContent } from "@/components/ui/card"
+import { getUserCompanyMembership } from '@/data-access/companies'
 
 const LoadingSpinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-opacity-75 z-50">
@@ -12,22 +16,53 @@ const LoadingSpinner = () => (
       </CardContent>
     </Card>
   </div>
-);
+)
 
-const RoleBasedAccess = ({ children, allowedRoles }) => {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+const RoleBasedAccess = ({ children, allowedCompanyTypes }) => {
+  const { user, isLoaded } = useUser()
+  const router = useRouter()
+  const [isChecking, setIsChecking] = useState(true)
+  const [hasAccess, setHasAccess] = useState(false)
 
-  if (status === 'loading') {
-    return <LoadingSpinner />;
+  useEffect(() => {
+    const checkAccess = async () => {
+      if (!isLoaded) return
+
+      if (!user) {
+        router.push('/auth/signin')
+        return
+      }
+
+      try {
+        const companyMembership = await getUserCompanyMembership(user.id)
+        const userCompanyType = companyMembership?.companies?.type
+
+        if (!userCompanyType || !allowedCompanyTypes.includes(userCompanyType)) {
+          router.push('/unauthorized')
+          return
+        }
+
+        setHasAccess(true)
+      } catch (error) {
+        console.error('Error checking access:', error)
+        router.push('/unauthorized')
+      } finally {
+        setIsChecking(false)
+      }
+    }
+
+    checkAccess()
+  }, [user, isLoaded, allowedCompanyTypes, router])
+
+  if (!isLoaded || isChecking) {
+    return <LoadingSpinner />
   }
 
-  if (!session || !allowedRoles.includes(session.user.role)) {
-    router.push('/unauthorized');
-    return null;
+  if (!hasAccess) {
+    return null
   }
 
-  return children;
-};
+  return children
+}
 
-export default RoleBasedAccess;
+export default RoleBasedAccess

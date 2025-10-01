@@ -1,5 +1,6 @@
 // @/app/layout
 import { IBM_Plex_Sans as FontSans } from "next/font/google"
+import { ClerkProvider } from '@clerk/nextjs'
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
@@ -19,6 +20,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
+    <ClerkProvider>
     <html lang="en" suppressHydrationWarning>
       <head />
       <body
@@ -47,5 +49,6 @@ export default function RootLayout({ children }) {
         </ThemeProvider>
       </body>
     </html>
+    </ClerkProvider>
   )
 }

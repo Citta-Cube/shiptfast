@@ -1,99 +1,73 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
-import { getUserCompanyMembership } from '@/data-access/companies'
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { getUserCompanyMembership } from "@/data-access/companies";
 
-export async function middleware(request) {
-  let supabaseResponse = NextResponse.next({ request })
+// Public routes (landing + auth pages)
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/auth(.*)",   // catch-all auth
+  "/signin(.*)",
+  "/signup(.*)"
+]);
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+export default clerkMiddleware(async (auth, req) => {
+  const { userId } = await auth();  
+  const pathname = req.nextUrl.pathname;
 
-  // Allow landing page `/` without login
-  if (request.nextUrl.pathname === '/') {
-    return supabaseResponse
-  }
+  // Allow public routes
+  if (isPublicRoute(req)) return NextResponse.next();
 
-  // IMPORTANT: auth.getUser() must be called FIRST
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // Handle authentication-related routes
+  // Signed-in users on auth pages → redirect to dashboard
   const isAuthRoute =
-    request.nextUrl.pathname.startsWith('/auth') ||
-    request.nextUrl.pathname.startsWith('/signin') ||
-    request.nextUrl.pathname.startsWith('/signup')
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/signin") ||
+    pathname.startsWith("/signup");
 
-  // If user is signed in and trying to access auth pages → redirect to dashboard
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  if (userId && isAuthRoute) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
   }
 
-  // If user is not signed in and trying to access protected pages → redirect to signin
-  if (!user && !isAuthRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/signin'
-    return NextResponse.redirect(url)
+  // Not signed in → redirect to catch-all sign in
+  if (!userId && !isAuthRoute) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/auth/signin";  // your catch-all SignIn route
+    return NextResponse.redirect(url);
   }
 
-  // Role-based access control
-  if (user) {
-    const isForwarderRoute = request.nextUrl.pathname.startsWith('/forwarders')
-    const isExporterRoute = request.nextUrl.pathname.startsWith('/exporters')
+  // Signed-in → enforce company-type access
+  if (userId) {
+    const isForwarderRoute = pathname.startsWith("/forwarders");
+    const isExporterRoute = pathname.startsWith("/exporters");
 
     if (isForwarderRoute || isExporterRoute) {
-      const companyMembership = await getUserCompanyMembership(user.id)
+      try {
+        const membership = await getUserCompanyMembership(userId);
+        const companyType = membership?.companies?.type;
 
-      if (companyMembership?.companies?.type) {
-        const companyType = companyMembership.companies.type
-
-        if (isForwarderRoute && companyType !== 'FREIGHT_FORWARDER') {
-          const url = request.nextUrl.clone()
-          url.pathname = '/dashboard'
-          return NextResponse.redirect(url)
+        if (isForwarderRoute && companyType !== "FREIGHT_FORWARDER") {
+          const url = req.nextUrl.clone();
+          url.pathname = "/dashboard";
+          return NextResponse.redirect(url);
         }
 
-        if (isExporterRoute && companyType !== 'EXPORTER') {
-          const url = request.nextUrl.clone()
-          url.pathname = '/dashboard'
-          return NextResponse.redirect(url)
+        if (isExporterRoute && companyType !== "EXPORTER") {
+          const url = req.nextUrl.clone();
+          url.pathname = "/dashboard";
+          return NextResponse.redirect(url);
         }
+      } catch (err) {
+        console.error("Error checking membership:", err);
       }
     }
   }
 
-  return supabaseResponse
-}
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
-}
+};
