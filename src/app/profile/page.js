@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { auth, currentUser } from '@clerk/nextjs/server' 
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -6,17 +7,29 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon } from "lucide-react"
 import { format } from 'date-fns'
+import { reconcilePendingInvitationsForUser } from '@/data-access/companies'
+import InviteMemberForm from '@/components/profile/InviteMemberForm'
+import PendingInvitations from '@/components/profile/PendingInvitations'
 
 export default async function ProfilePage() {
-  const supabase = createClient()
+  const { userId } = await auth()  
+  const user = await currentUser() 
 
-  // Get authenticated user
-  const { data: userData, error: userError } = await supabase.auth.getUser()
-  if (userError || !userData?.user) {
+  if (!userId || !user) {
     redirect('/auth/signin')
   }
 
-  // Fetch user's company information - since a user can only belong to one company
+  const supabase = createClient()
+
+  // Reconcile any pending invitations stored with email as user_id
+  try {
+    const primaryEmail = user.emailAddresses?.[0]?.emailAddress
+    await reconcilePendingInvitationsForUser(userId, primaryEmail)
+  } catch (e) {
+    console.error('Failed to reconcile pending invitations:', e)
+  }
+
+  // Fetch user's company information
   const { data: companyMembership, error: companyError } = await supabase
     .from('company_members')
     .select(`
@@ -43,11 +56,11 @@ export default async function ProfilePage() {
         average_rating
       )
     `)
-    .eq('user_id', userData.user.id)
+    .eq('user_id', userId)
     .eq('is_active', true)
-    .single() // Since a user can only belong to one company
+    .single()
 
-  if (companyError && companyError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+  if (companyError && companyError.code !== 'PGRST116') {
     console.error('Error fetching company data:', companyError)
   }
 
@@ -68,9 +81,9 @@ export default async function ProfilePage() {
       `)
       .eq('company_id', companyMembership.companies.id)
       .eq('is_active', true)
-      .neq('user_id', userData.user.id) // Exclude current user
-      .order('role', { ascending: false }) // Admin roles first
-      .order('created_at', { ascending: true }) // Then by seniority
+      .neq('user_id', userId)
+      .order('role', { ascending: false })
+      .order('created_at', { ascending: true })
 
     if (membersError) {
       console.error('Error fetching company members:', membersError)
@@ -79,20 +92,25 @@ export default async function ProfilePage() {
     }
   }
 
-  // Use first and last name for display
-  const userName = companyMembership?.first_name && companyMembership?.last_name 
-    ? `${companyMembership.first_name} ${companyMembership.last_name}`
-    : userData.user.email.split('@')[0]
+  // Use Clerk user data or fallback to company member data
+  const userName = user.fullName || 
+    (companyMembership?.first_name && companyMembership?.last_name 
+      ? `${companyMembership.first_name} ${companyMembership.last_name}`
+      : user.emailAddresses[0]?.emailAddress.split('@')[0])
   
-  // Avatar fallback - first letter of first and last name or email
-  const avatarFallback = companyMembership?.first_name && companyMembership?.last_name
-    ? `${companyMembership.first_name[0]}${companyMembership.last_name[0]}`
-    : userData.user.email.charAt(0).toUpperCase()
+  const userEmail = user.emailAddresses[0]?.emailAddress
+
+  // Avatar fallback
+  const avatarFallback = user.firstName && user.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`
+    : (companyMembership?.first_name && companyMembership?.last_name
+      ? `${companyMembership.first_name[0]}${companyMembership.last_name[0]}`
+      : userEmail?.charAt(0).toUpperCase())
 
   // Format dates
   const memberSince = companyMembership?.created_at 
     ? format(new Date(companyMembership.created_at), 'MMMM yyyy')
-    : format(new Date(userData.user.created_at), 'MMMM yyyy')
+    : format(new Date(user.createdAt), 'MMMM yyyy')
   
   const companyCreatedAt = companyMembership?.companies?.created_at
     ? format(new Date(companyMembership.companies.created_at), 'MMMM yyyy')
@@ -115,12 +133,13 @@ export default async function ProfilePage() {
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-24 w-24 mb-4">
+                  <AvatarImage src={user.imageUrl} alt={userName} />
                   <AvatarFallback className="text-2xl bg-primary/10">
                     {avatarFallback}
                   </AvatarFallback>
                 </Avatar>
                 <h2 className="text-xl font-semibold">{userName}</h2>
-                <p className="text-sm text-muted-foreground mb-2">{userData.user.email}</p>
+                <p className="text-sm text-muted-foreground mb-2">{userEmail}</p>
                 
                 {companyMembership?.role && (
                   <Badge className="mt-1" variant="outline">
@@ -209,15 +228,15 @@ export default async function ProfilePage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <h3 className="text-sm font-medium mb-1">First Name</h3>
-                      <p className="text-sm">{companyMembership?.first_name || 'Not specified'}</p>
+                      <p className="text-sm">{user.firstName || companyMembership?.first_name || 'Not specified'}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium mb-1">Last Name</h3>
-                      <p className="text-sm">{companyMembership?.last_name || 'Not specified'}</p>
+                      <p className="text-sm">{user.lastName || companyMembership?.last_name || 'Not specified'}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium mb-1">Email</h3>
-                      <p className="text-sm">{userData.user.email}</p>
+                      <p className="text-sm">{userEmail}</p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium mb-1">Job Title</h3>
@@ -319,56 +338,68 @@ export default async function ProfilePage() {
             </TabsContent>
             
             <TabsContent value="team" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Members</CardTitle>
-                  <CardDescription>
-                    Other members of your company
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {companyMembers.length > 0 ? (
-                    <div className="space-y-4">
-                      {companyMembers.map((member) => (
-                        <div key={member.id} className="flex items-center p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                          <Avatar className="h-10 w-10 mr-4">
-                            <AvatarFallback className="bg-primary/10">
-                              {getAvatarFallback(member.first_name, member.last_name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium truncate">
-                                {member.first_name && member.last_name 
-                                  ? `${member.first_name} ${member.last_name}` 
-                                  : 'Team Member'}
-                              </h4>
-                              <Badge variant="outline" className="ml-2">
-                                {member.role || 'Member'}
-                              </Badge>
+              <div className="space-y-6">
+                {/* Invite Member Form - Only show for ADMIN and MANAGER roles */}
+                {companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER' ? (
+                  <>
+                    <InviteMemberForm 
+                      companyId={companyMembership.companies?.id}
+                    />
+                    <PendingInvitations companyId={companyMembership.companies?.id} />
+                  </>
+                ) : null}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Team Members</CardTitle>
+                    <CardDescription>
+                      Other members of your company
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {companyMembers.length > 0 ? (
+                      <div className="space-y-4">
+                        {companyMembers.map((member) => (
+                          <div key={member.id} className="flex items-center p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                            <Avatar className="h-10 w-10 mr-4">
+                              <AvatarFallback className="bg-primary/10">
+                                {getAvatarFallback(member.first_name, member.last_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium truncate">
+                                  {member.first_name && member.last_name 
+                                    ? `${member.first_name} ${member.last_name}` 
+                                    : 'Team Member'}
+                                </h4>
+                                <Badge variant="outline" className="ml-2">
+                                  {member.role || 'Member'}
+                                </Badge>
+                              </div>
+                              {member.job_title && (
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {member.job_title}
+                                </p>
+                              )}
                             </div>
-                            {member.job_title && (
-                              <p className="text-sm text-muted-foreground truncate">
-                                {member.job_title}
-                              </p>
-                            )}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No Team Members</h3>
-                      <p className="text-sm text-muted-foreground max-w-md">
-                        {companyMembership?.companies 
-                          ? "You're currently the only member of your company."
-                          : "You're not associated with any company."}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium mb-2">No Team Members</h3>
+                        <p className="text-sm text-muted-foreground max-w-md">
+                          {companyMembership?.companies 
+                            ? "You're currently the only member of your company."
+                            : "You're not associated with any company."}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

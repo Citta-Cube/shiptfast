@@ -2,17 +2,20 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useClerk, useUser } from '@clerk/nextjs'
 import { Menu, CircleUser } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { exporterConfig, forwarderConfig } from '@/config/dashboard'
-import { signOutAction } from '@/app/auth/actions'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 const Header = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const router = useRouter()
+  const { signOut } = useClerk()
+  const { user } = useUser()
   
   // Select the appropriate config based on userType
   const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
@@ -20,19 +23,21 @@ const Header = ({ userType = 'EXPORTER' }) => {
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
-      await signOutAction()
-      // The server action will handle the redirect, but we can also do it here as a fallback
-      router.push('/auth/signin')
+      await signOut()
+      router.push('/')
     } catch (error) {
       console.error('Logout failed:', error)
-      // Handle error (e.g., show a notification to the user)
     } finally {
       setIsLoggingOut(false)
     }
   }
 
+  const userInitials = user?.firstName && user?.lastName 
+    ? `${user.firstName[0]}${user.lastName[0]}` 
+    : user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?'
+
   return (
-    <header className="flex h-14 items-center gap-4 border-b  px-4 lg:h-[80px] lg:px-6">
+    <header className="flex h-14 items-center gap-4 border-b px-4 lg:h-[80px] lg:px-6">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">
@@ -90,12 +95,21 @@ const Header = ({ userType = 'EXPORTER' }) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              <CircleUser className="h-5 w-5" />
+              {user?.imageUrl ? (
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.imageUrl} alt={user.fullName || 'User'} />
+                  <AvatarFallback>{userInitials}</AvatarFallback>
+                </Avatar>
+              ) : (
+                <CircleUser className="h-5 w-5" />
+              )}
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {user?.fullName || user?.emailAddresses[0]?.emailAddress}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => router.push('/profile')}>
               User Profile
