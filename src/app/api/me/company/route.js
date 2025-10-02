@@ -25,9 +25,10 @@ export async function GET() {
           country_code
         )
       `)
-      .eq('user_id', user.id)
+      .eq('id', user.id)
       .eq('is_active', true)
       .single();
+
 
     if (error) throw error;
     if (!membership?.companies) {
