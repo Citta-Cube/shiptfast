@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { auth, currentUser } from '@clerk/nextjs/server' 
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,12 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon } from "lucide-react"
 import { format } from 'date-fns'
 import { reconcilePendingInvitationsForUser } from '@/data-access/companies'
-import InviteMemberForm from '@/components/profile/InviteMemberForm'
+import InviteMemberDialog from '@/components/profile/InviteMemberDialog'
 import PendingInvitations from '@/components/profile/PendingInvitations'
+import TeamMembersList from '@/components/profile/TeamMembersList'
 
 export default async function ProfilePage() {
-  const { userId } = await auth()  
-  const user = await currentUser() 
+  const { userId } = await auth()
+  const user = await currentUser()
 
   if (!userId || !user) {
     redirect('/auth/signin')
@@ -93,11 +94,11 @@ export default async function ProfilePage() {
   }
 
   // Use Clerk user data or fallback to company member data
-  const userName = user.fullName || 
-    (companyMembership?.first_name && companyMembership?.last_name 
+  const userName = user.fullName ||
+    (companyMembership?.first_name && companyMembership?.last_name
       ? `${companyMembership.first_name} ${companyMembership.last_name}`
       : user.emailAddresses[0]?.emailAddress.split('@')[0])
-  
+
   const userEmail = user.emailAddresses[0]?.emailAddress
 
   // Avatar fallback
@@ -108,21 +109,14 @@ export default async function ProfilePage() {
       : userEmail?.charAt(0).toUpperCase())
 
   // Format dates
-  const memberSince = companyMembership?.created_at 
+  const memberSince = companyMembership?.created_at
     ? format(new Date(companyMembership.created_at), 'MMMM yyyy')
     : format(new Date(user.createdAt), 'MMMM yyyy')
-  
+
   const companyCreatedAt = companyMembership?.companies?.created_at
     ? format(new Date(companyMembership.companies.created_at), 'MMMM yyyy')
     : null
 
-  // Helper function to generate avatar fallback for team members
-  function getAvatarFallback(firstName, lastName) {
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase()
-    }
-    return '👤'
-  }
 
   return (
     <div className="container">
@@ -140,13 +134,13 @@ export default async function ProfilePage() {
                 </Avatar>
                 <h2 className="text-xl font-semibold">{userName}</h2>
                 <p className="text-sm text-muted-foreground mb-2">{userEmail}</p>
-                
+
                 {companyMembership?.role && (
                   <Badge className="mt-1" variant="outline">
                     {companyMembership.role}
                   </Badge>
                 )}
-                
+
                 <div className="flex items-center text-sm text-muted-foreground mt-4">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   <span>Member since {memberSince}</span>
@@ -191,9 +185,9 @@ export default async function ProfilePage() {
                   {companyMembership.companies.website && (
                     <div className="flex">
                       <GlobeIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <a 
-                        href={companyMembership.companies.website} 
-                        target="_blank" 
+                      <a
+                        href={companyMembership.companies.website}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline truncate"
                       >
@@ -215,7 +209,7 @@ export default async function ProfilePage() {
               <TabsTrigger value="company">Company Details</TabsTrigger>
               <TabsTrigger value="team">Team Members</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="personal" className="mt-6">
               <Card>
                 <CardHeader>
@@ -254,7 +248,7 @@ export default async function ProfilePage() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="company" className="mt-6">
               {companyMembership?.companies ? (
                 <Card>
@@ -336,69 +330,41 @@ export default async function ProfilePage() {
                 </Card>
               )}
             </TabsContent>
-            
+
             <TabsContent value="team" className="mt-6">
               <div className="space-y-6">
-                {/* Invite Member Form - Only show for ADMIN and MANAGER roles */}
-                {companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER' ? (
-                  <>
-                    <InviteMemberForm 
-                      companyId={companyMembership.companies?.id}
-                    />
-                    <PendingInvitations companyId={companyMembership.companies?.id} />
-                  </>
-                ) : null}
-
+                {/* Team Members Section with Invite Button */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Team Members</CardTitle>
-                    <CardDescription>
-                      Other members of your company
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Team Members</CardTitle>
+                        <CardDescription>
+                          Members of your company
+                        </CardDescription>
+                      </div>
+                      {/* Invite Member Button - Only show for ADMIN and MANAGER roles */}
+                      {(companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER') && companyMembership?.companies?.id && (
+                        <InviteMemberDialog
+                          companyId={companyMembership.companies.id}
+                        />
+                      )}
+                    </div>
                   </CardHeader>
+                
                   <CardContent>
-                    {companyMembers.length > 0 ? (
-                      <div className="space-y-4">
-                        {companyMembers.map((member) => (
-                          <div key={member.id} className="flex items-center p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                            <Avatar className="h-10 w-10 mr-4">
-                              <AvatarFallback className="bg-primary/10">
-                                {getAvatarFallback(member.first_name, member.last_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-medium truncate">
-                                  {member.first_name && member.last_name 
-                                    ? `${member.first_name} ${member.last_name}` 
-                                    : 'Team Member'}
-                                </h4>
-                                <Badge variant="outline" className="ml-2">
-                                  {member.role || 'Member'}
-                                </Badge>
-                              </div>
-                              {member.job_title && (
-                                <p className="text-sm text-muted-foreground truncate">
-                                  {member.job_title}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-10 text-center">
-                        <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium mb-2">No Team Members</h3>
-                        <p className="text-sm text-muted-foreground max-w-md">
-                          {companyMembership?.companies 
-                            ? "You're currently the only member of your company."
-                            : "You're not associated with any company."}
-                        </p>
-                      </div>
-                    )}
+                    <TeamMembersList 
+                      initialMembers={companyMembers}
+                      currentUserRole={companyMembership?.role}
+                      currentUserId={userId}
+                    />
                   </CardContent>
                 </Card>
+
+                {/* Pending Invitations Section - Only show for ADMIN and MANAGER roles */}
+                {(companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER') && companyMembership?.companies?.id && (
+                  <PendingInvitations companyId={companyMembership.companies.id} />
+                )}
               </div>
             </TabsContent>
           </Tabs>

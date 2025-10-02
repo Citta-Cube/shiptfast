@@ -207,3 +207,45 @@ export async function getPendingInvitations(companyId) {
   if (error) throw error
   return data || []
 }
+
+export async function updateCompanyMember(memberId, updateData) {
+  const { data, error } = await createClient()
+    .from('company_members')
+    .update(updateData)
+    .eq('id', memberId)
+    .eq('is_active', true)
+    .select(`
+      id,
+      user_id,
+      first_name,
+      last_name,
+      job_title,
+      role,
+      created_at,
+      is_active
+    `)
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
+export async function deleteCompanyMember(memberId) {
+  // First get the member data before deletion
+  const { data: memberData, error: fetchError } = await createClient()
+    .from('company_members')
+    .select('id, first_name, last_name')
+    .eq('id', memberId)
+    .single()
+  
+  if (fetchError) throw fetchError
+  
+  // Then permanently delete the record
+  const { error: deleteError } = await createClient()
+    .from('company_members')
+    .delete()
+    .eq('id', memberId)
+  
+  if (deleteError) throw deleteError
+  return memberData
+}
