@@ -42,7 +42,7 @@ export async function POST(req) {
       .from('company_members')
       .select('id, is_active')
       .eq('company_id', companyId)
-      .eq('user_id', email) // We'll use email as a temporary identifier
+      .eq('email', email) // Check by email field
       .single()
 
     if (existingError && existingError.code !== 'PGRST116') {
@@ -55,7 +55,7 @@ export async function POST(req) {
 
     // Create invitation record in company_members with is_active = false
     const invitation = await createCompanyInvitation(companyId, {
-      user_id: email, // Temporary: we'll update this with Clerk user ID when they accept
+      email: email, // Store email in email field
       first_name: firstName || null,
       last_name: lastName || null,
       job_title: jobTitle || null,

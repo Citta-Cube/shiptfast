@@ -68,7 +68,7 @@ export default function TeamMembersList({
                     : 'Team Member'}
                 </span>
                 <span className="text-muted-foreground truncate">
-                  {member.user_id ? `${member.user_id}@company.com` : 'Email not available'}
+                  {member.email || 'Email not available'}
                 </span>
                 <span className="text-muted-foreground truncate">
                   {member.job_title || 'No job title'}

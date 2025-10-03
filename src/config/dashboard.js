@@ -1,4 +1,4 @@
-import { Home, Package, Users, LineChart, CreditCard, Settings, Ship, Plane, Clock, FileText, MessageCircle, Building, Briefcase } from "lucide-react"
+import { Home, Package, Users, LineChart, CreditCard, Settings, Ship, Plane, Clock, FileText, MessageCircle, Building, Briefcase, User } from "lucide-react"
 
 // Exporter menu configuration
 export const exporterConfig = {
@@ -6,11 +6,6 @@ export const exporterConfig = {
     {
       title: "Create Order",
       href: "/orders/new",
-    },
-    {
-      title: "Support",
-      href: "/support",
-      disabled: true,
     },
   ],
   sidebarNav: [
@@ -60,6 +55,11 @@ export const exporterConfig = {
       title: "Freight Forwarders",
       href: "/forwarders",
       icon: Users,
+    },
+    {
+      title: "Settings & Configuration",
+      href: "/profile",
+      icon: Settings,
     }
   ],
 }
@@ -70,10 +70,6 @@ export const forwarderConfig = {
     {
       title: "Quote Requests",
       href: "/forwarders/orders/open",
-    },
-    {
-      title: "Settings",
-      href: "/forwarders/settings",
     },
   ],
   sidebarNav: [
@@ -134,6 +130,11 @@ export const forwarderConfig = {
       href: "/forwarders/exporters",
       icon: Building,
     },
+    {
+      title: "Settings & Configuration",
+      href: "/profile",
+      icon: Settings,
+    }
   ],
 }
 

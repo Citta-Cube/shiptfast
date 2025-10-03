@@ -187,7 +187,7 @@ export default function EditMemberDialog({ member, onMemberUpdated }) {
             </Label>
             <div className="p-3 bg-muted rounded-md">
               <div className="text-sm text-muted-foreground">
-                {member.user_id ? `${member.user_id}@company.com` : 'Email not available'}
+                {member.email || 'Email not available'}
               </div>
               <div className="text-xs text-muted-foreground mt-1">
                 Email cannot be changed

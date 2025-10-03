@@ -1,24 +1,80 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useClerk, useUser } from '@clerk/nextjs'
-import { Menu, CircleUser } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { exporterConfig, forwarderConfig } from '@/config/dashboard'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { createClient } from '@/lib/supabase/client'
 
 const Header = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [companyMembership, setCompanyMembership] = useState(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { signOut } = useClerk()
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
   
   // Select the appropriate config based on userType
   const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
+
+  // Fetch user's company information
+  useEffect(() => {
+    if (!isLoaded || !user) return
+
+    const fetchUserData = async () => {
+      try {
+        setLoading(true)
+        const supabase = createClient()
+
+        // Fetch user's company information
+        const { data: companyData, error: companyError } = await supabase
+          .from('company_members')
+          .select(`
+            id,
+            job_title,
+            role,
+            is_active,
+            first_name,
+            last_name,
+            companies:company_id (
+              id,
+              name,
+              website,
+              email,
+              phone,
+              address,
+              description,
+              type,
+              business_registration_number,
+              vat_number,
+              created_at,
+              is_verified,
+              average_rating
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .single()
+
+        if (companyError && companyError.code !== 'PGRST116') {
+          console.error('Error fetching company data:', companyError)
+        }
+
+        setCompanyMembership(companyData)
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [isLoaded, user])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -32,8 +88,20 @@ const Header = ({ userType = 'EXPORTER' }) => {
     }
   }
 
-  const userInitials = user?.firstName && user?.lastName 
-    ? `${user.firstName[0]}${user.lastName[0]}` 
+  const handleProfileClick = () => {
+    router.push('/profile?tab=personal')
+  }
+
+  // Get user's first name and last name
+  const firstName = user?.firstName || companyMembership?.first_name || ''
+  const lastName = user?.lastName || companyMembership?.last_name || ''
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : user?.emailAddresses[0]?.emailAddress?.split('@')[0] || ''
+  
+  // Get company name
+  const companyName = companyMembership?.companies?.name || ''
+
+  const userInitials = firstName && lastName 
+    ? `${firstName[0]}${lastName[0]}` 
     : user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?'
 
   return (
@@ -92,40 +160,28 @@ const Header = ({ userType = 'EXPORTER' }) => {
         })}
       </nav>
       <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              {user?.imageUrl ? (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.imageUrl} alt={user.fullName || 'User'} />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
-                </Avatar>
-              ) : (
-                <CircleUser className="h-5 w-5" />
-              )}
-              <span className="sr-only">Toggle user menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
-              {user?.fullName || user?.emailAddresses[0]?.emailAddress}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => router.push('/profile')}>
-              User Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => router.push('/support')}>
-              Support
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={handleLogout}
-              disabled={isLoggingOut}
-            >
-              {isLoggingOut ? 'Logging out...' : 'Logout'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* User Profile Section - Click to navigate to profile */}
+        <div 
+          onClick={handleProfileClick}
+          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
+        >
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.imageUrl} alt={fullName || 'User'} />
+            <AvatarFallback>{userInitials}</AvatarFallback>
+          </Avatar>
+          
+          <div className="flex flex-col">
+            <div className="text-sm font-medium text-foreground">
+              {fullName}
+            </div>
+            {companyName && (
+              <div className="text-xs text-muted-foreground">
+                {companyName}
+              </div>
+            )}
+          </div>
+        </div>
+        
         <ThemeModeToggle />
       </div>
     </header>

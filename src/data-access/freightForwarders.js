@@ -129,14 +129,10 @@ export async function getForwarderMembers(forwarderId) {
       job_title,
       role,
       is_active,
+      first_name,
+      last_name,
       created_at,
-      updated_at,
-      user:user_profiles (
-        id,
-        email,
-        first_name,
-        last_name
-      )
+      updated_at
     `)
     .eq('company_id', forwarderId)
     .order('created_at', { ascending: false });

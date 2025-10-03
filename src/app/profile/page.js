@@ -1,96 +1,149 @@
-import { redirect } from 'next/navigation'
-import { auth, currentUser } from '@clerk/nextjs/server'
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon } from "lucide-react"
 import { format } from 'date-fns'
-import { reconcilePendingInvitationsForUser } from '@/data-access/companies'
+import { reconcileUserInvitations } from '@/app/auth/actions'
 import InviteMemberDialog from '@/components/profile/InviteMemberDialog'
 import PendingInvitations from '@/components/profile/PendingInvitations'
 import TeamMembersList from '@/components/profile/TeamMembersList'
 
-export default async function ProfilePage() {
-  const { userId } = await auth()
-  const user = await currentUser()
+export default function ProfilePage() {
+  const { user, isLoaded } = useUser()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState('personal')
+  const [companyMembership, setCompanyMembership] = useState(null)
+  const [companyMembers, setCompanyMembers] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  if (!userId || !user) {
-    redirect('/auth/signin')
-  }
-
-  const supabase = createClient()
-
-  // Reconcile any pending invitations stored with email as user_id
-  try {
-    const primaryEmail = user.emailAddresses?.[0]?.emailAddress
-    await reconcilePendingInvitationsForUser(userId, primaryEmail)
-  } catch (e) {
-    console.error('Failed to reconcile pending invitations:', e)
-  }
-
-  // Fetch user's company information
-  const { data: companyMembership, error: companyError } = await supabase
-    .from('company_members')
-    .select(`
-      id,
-      job_title,
-      role,
-      is_active,
-      first_name,
-      last_name,
-      created_at,
-      companies:company_id (
-        id,
-        name,
-        website,
-        email,
-        phone,
-        address,
-        description,
-        type,
-        business_registration_number,
-        vat_number,
-        created_at,
-        is_verified,
-        average_rating
-      )
-    `)
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .single()
-
-  if (companyError && companyError.code !== 'PGRST116') {
-    console.error('Error fetching company data:', companyError)
-  }
-
-  // Fetch other company members if user belongs to a company
-  let companyMembers = []
-  if (companyMembership?.companies?.id) {
-    const { data: members, error: membersError } = await supabase
-      .from('company_members')
-      .select(`
-        id,
-        user_id,
-        first_name,
-        last_name,
-        job_title,
-        role,
-        created_at,
-        is_active
-      `)
-      .eq('company_id', companyMembership.companies.id)
-      .eq('is_active', true)
-      .neq('user_id', userId)
-      .order('role', { ascending: false })
-      .order('created_at', { ascending: true })
-
-    if (membersError) {
-      console.error('Error fetching company members:', membersError)
-    } else {
-      companyMembers = members || []
+  // Get active tab from URL params
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && ['personal', 'company', 'team-members'].includes(tab)) {
+      setActiveTab(tab)
     }
+  }, [searchParams])
+
+  // Handle tab change
+  const handleTabChange = (value) => {
+    setActiveTab(value)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', value)
+    router.push(`/profile?${params.toString()}`, { scroll: false })
+  }
+
+  // Fetch user data
+  useEffect(() => {
+    if (!isLoaded || !user) return
+
+    const fetchUserData = async () => {
+      try {
+        setLoading(true)
+        const supabase = createClient()
+
+        // Reconcile any pending invitations stored with email as user_id
+        try {
+          const primaryEmail = user.emailAddresses?.[0]?.emailAddress
+          await reconcileUserInvitations(user.id, primaryEmail)
+        } catch (e) {
+          console.error('Failed to reconcile pending invitations:', e)
+        }
+
+        // Fetch user's company information
+        const { data: companyData, error: companyError } = await supabase
+          .from('company_members')
+          .select(`
+            id,
+            job_title,
+            role,
+            is_active,
+            first_name,
+            last_name,
+            created_at,
+            companies:company_id (
+              id,
+              name,
+              website,
+              email,
+              phone,
+              address,
+              description,
+              type,
+              business_registration_number,
+              vat_number,
+              created_at,
+              is_verified,
+              average_rating
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .single()
+
+        if (companyError && companyError.code !== 'PGRST116') {
+          console.error('Error fetching company data:', companyError)
+        }
+
+        setCompanyMembership(companyData)
+
+        // Fetch other company members if user belongs to a company
+        if (companyData?.companies?.id) {
+          const { data: members, error: membersError } = await supabase
+            .from('company_members')
+            .select(`
+              id,
+              user_id,
+              first_name,
+              last_name,
+              job_title,
+              role,
+              email,
+              created_at,
+              is_active
+            `)
+            .eq('company_id', companyData.companies.id)
+            .eq('is_active', true)
+            .neq('user_id', user.id)
+            .order('role', { ascending: false })
+            .order('created_at', { ascending: true })
+
+          if (membersError) {
+            console.error('Error fetching company members:', membersError)
+          } else {
+            setCompanyMembers(members || [])
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [isLoaded, user])
+
+  if (!isLoaded || loading) {
+    return (
+      <div className="container">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    router.push('/auth/signin')
+    return null
   }
 
   // Use Clerk user data or fallback to company member data
@@ -203,11 +256,11 @@ export default async function ProfilePage() {
 
         {/* Right column - Detailed information */}
         <div className="space-y-6">
-          <Tabs defaultValue="personal" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="personal">Personal Information</TabsTrigger>
               <TabsTrigger value="company">Company Details</TabsTrigger>
-              <TabsTrigger value="team">Team Members</TabsTrigger>
+              <TabsTrigger value="team-members">Team Members</TabsTrigger>
             </TabsList>
 
             <TabsContent value="personal" className="mt-6">
@@ -331,7 +384,7 @@ export default async function ProfilePage() {
               )}
             </TabsContent>
 
-            <TabsContent value="team" className="mt-6">
+            <TabsContent value="team-members" className="mt-6">
               <div className="space-y-6">
                 {/* Team Members Section with Invite Button */}
                 <Card>
@@ -356,7 +409,7 @@ export default async function ProfilePage() {
                     <TeamMembersList 
                       initialMembers={companyMembers}
                       currentUserRole={companyMembership?.role}
-                      currentUserId={userId}
+                      currentUserId={user.id}
                     />
                   </CardContent>
                 </Card>
