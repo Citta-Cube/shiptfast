@@ -61,7 +61,6 @@ export async function getForwarderQuotes(orderId, forwarderId) {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  console.log('quotes', quotes);
   return quotes;
 }
 

@@ -14,7 +14,6 @@ export async function getDocumentById(id) {
 }
 
 export async function createDocument(document) {
-  console.log("document", document);
   const { data, error } = await supabase
     .from('documents')
     .insert(document)
