@@ -100,7 +100,7 @@ export default function PendingInvitations({ companyId }) {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Mail className="h-3 w-3" />
-                      <span>{invitation.user_id}</span>
+                      <span>{invitation.email || invitation.user_id}</span>
                     </div>
                     {invitation.job_title && (
                       <div className="flex items-center gap-1">

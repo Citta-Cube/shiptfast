@@ -1,31 +1,62 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from '@/components/ui/dialog'
 import { UserPlus, Mail, User, Briefcase } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 
-const ROLES = [
-  { value: 'ADMIN', label: 'Admin', description: 'Full access to company operations' },
-  { value: 'MANAGER', label: 'Manager', description: 'Manage operational tasks and team' },
-  { value: 'OPERATOR', label: 'Operator', description: 'Perform day-to-day operations' },
-  { value: 'VIEWER', label: 'Viewer', description: 'Read-only access' }
-]
-
-export default function InviteMemberForm({ companyId }) {
+export default function InviteMemberDialog({ companyId, onInviteSent }) {
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
     lastName: '',
     jobTitle: '',
-    role: 'VIEWER'
+    role: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [roles, setRoles] = useState([])
+  const supabase = createClient()
+
+  // Fetch enum values from Supabase
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const { data, error } = await supabase
+          .rpc('get_enum_values', { enum_name: 'company_role' })
+        
+        if (error) throw error
+        
+        setRoles(data || [])
+        // Set default role to first available role or empty string
+        if (data && data.length > 0) {
+          setFormData(prev => ({ ...prev, role: data[0] }))
+        }
+      } catch (error) {
+        console.error('Error fetching roles:', error)
+        // Fallback to hardcoded values if needed
+        const fallbackRoles = ['ADMIN', 'MANAGER', 'OPERATOR', 'VIEWER', 'TEST']
+        setRoles(fallbackRoles)
+        setFormData(prev => ({ ...prev, role: 'VIEWER' }))
+      }
+    }
+
+    fetchRoles()
+  }, [supabase])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -55,10 +86,15 @@ export default function InviteMemberForm({ companyId }) {
         firstName: '',
         lastName: '',
         jobTitle: '',
-        role: 'VIEWER'
+        role: roles[0] || ''
       })
       
-      // Refresh the page to show updated pending invitations
+      setOpen(false)
+      
+      if (onInviteSent) {
+        onInviteSent()
+      }
+      
       setTimeout(() => {
         window.location.reload()
       }, 1000)
@@ -78,17 +114,24 @@ export default function InviteMemberForm({ companyId }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5" />
-          Invite Team Member
-        </CardTitle>
-        <CardDescription>
-          Send an invitation to join your company. The invitee will receive an email to set up their account.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="flex items-center gap-2">
+          <UserPlus className="h-4 w-4" />
+          Invite Member
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Invite Team Member
+          </DialogTitle>
+          <DialogDescription>
+            Send an invitation to join your company. The invitee will receive an email to set up their account.
+          </DialogDescription>
+        </DialogHeader>
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -119,12 +162,9 @@ export default function InviteMemberForm({ companyId }) {
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      <div className="flex flex-col">
-                        <span>{role.label}</span>
-                        <span className="text-xs text-muted-foreground">{role.description}</span>
-                      </div>
+                  {roles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -166,21 +206,22 @@ export default function InviteMemberForm({ companyId }) {
               onChange={(e) => handleInputChange('jobTitle', e.target.value)}
             />
           </div>
-
-          <div className="flex items-center justify-between pt-4">
-            <div className="text-sm text-muted-foreground">
-              <Badge variant="outline" className="mr-2">
-                {ROLES.find(r => r.value === formData.role)?.label || 'Viewer'}
-              </Badge>
-              {ROLES.find(r => r.value === formData.role)?.description}
-            </div>
-            
+          
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={isLoading || !formData.email}>
               {isLoading ? 'Sending...' : 'Send Invitation'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -7,17 +7,21 @@ const ForwarderEmployeeTable = ({ employees }) => (
     <TableHeader>
       <TableRow>
         <TableHead>Name</TableHead>
-        <TableHead>Email</TableHead>
         <TableHead>Job Title</TableHead>
+        <TableHead>Role</TableHead>
         <TableHead>Status</TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
       {employees?.map((employee) => (
         <TableRow key={employee.id}>
-          <TableCell>{`${employee.user.first_name} ${employee.user.last_name}`}</TableCell>
-          <TableCell>{employee.user.email}</TableCell>
-          <TableCell>{employee.job_title}</TableCell>
+          <TableCell>{`${employee.first_name} ${employee.last_name}`}</TableCell>
+          <TableCell>{employee.job_title || 'N/A'}</TableCell>
+          <TableCell>
+            <Badge variant="outline">
+              {employee.role}
+            </Badge>
+          </TableCell>
           <TableCell>
             <Badge 
               variant="outline" 
