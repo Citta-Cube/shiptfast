@@ -46,7 +46,13 @@ export default clerkMiddleware(async (auth, req) => {
         const membership = await getUserCompanyMembership(userId);
         const companyType = membership?.companies?.type;
 
-        if (isForwarderRoute && companyType !== "FREIGHT_FORWARDER") {
+        // Allow exporters to access /forwarders (for browsing freight forwarders)
+        // Only block /forwarders/dashboard and other forwarder-specific routes
+        const isForwarderDashboard = pathname.startsWith("/forwarders/dashboard") || 
+                                   pathname.startsWith("/forwarders/orders") ||
+                                   pathname.startsWith("/forwarders/exporters");
+        
+        if (isForwarderDashboard && companyType !== "FREIGHT_FORWARDER") {
           const url = req.nextUrl.clone();
           url.pathname = "/dashboard";
           return NextResponse.redirect(url);

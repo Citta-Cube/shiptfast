@@ -21,6 +21,14 @@ export async function POST(req) {
       );
     }
 
+    // Validate that at least one freight forwarder is selected
+    if (!Array.isArray(selectedForwarderIds) || selectedForwarderIds.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one freight forwarder must be selected to create an order' },
+        { status: 400 }
+      );
+    }
+
     // Process document uploads first
     const { documents, uploadedPaths } = await uploadDocuments(
       files,

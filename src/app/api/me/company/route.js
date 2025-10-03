@@ -1,17 +1,19 @@
  import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET() {
   try {
     const supabase = createClient();
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError) throw userError;
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Check if user is authenticated
+    const { userId } = await auth();
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
 
     const { data: membership, error } = await supabase
       .from('company_members')
@@ -25,7 +27,7 @@ export async function GET() {
           country_code
         )
       `)
-      .eq('id', user.id)
+      .eq('user_id', userId)
       .eq('is_active', true)
       .single();
 

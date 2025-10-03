@@ -53,7 +53,7 @@ export const exporterConfig = {
     },
     {
       title: "Freight Forwarders",
-      href: "/forwarders",
+      href: "/exporters/forwarders",
       icon: Users,
     },
     {
