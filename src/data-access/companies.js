@@ -162,13 +162,24 @@ export async function createCompanyInvitation(companyId, invitationData) {
 }
 
 export async function activateCompanyInvitation(invitationId, clerkUserId, userData) {
-  console.log('Activating invitation:', {
+  console.log('🔄 [activateCompanyInvitation] Starting invitation activation:', {
     invitationId,
     clerkUserId,
-    userData
+    userData,
+    timestamp: new Date().toISOString()
   })
 
-  const { data, error } = await createClient()
+  console.log('🔗 [activateCompanyInvitation] Creating Supabase client...')
+  const supabase = createClient()
+  console.log('✅ [activateCompanyInvitation] Supabase client created')
+
+  console.log('📝 [activateCompanyInvitation] Update data to be sent:', {
+    user_id: clerkUserId,
+    is_active: true,
+    ...userData
+  })
+
+  const { data, error } = await supabase
     .from('company_members')
     .update({
       user_id: clerkUserId,
@@ -180,11 +191,30 @@ export async function activateCompanyInvitation(invitationId, clerkUserId, userD
     .single()
   
   if (error) {
-    console.error('Error activating invitation:', error)
+    console.error('❌ [activateCompanyInvitation] Error activating invitation:', error)
+    console.error('📊 [activateCompanyInvitation] Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      invitationId,
+      clerkUserId
+    })
     throw error
   }
   
-  console.log('Successfully activated invitation:', data)
+  console.log('✅ [activateCompanyInvitation] Successfully activated invitation in Supabase:', {
+    recordId: data.id,
+    userId: data.user_id,
+    isActive: data.is_active,
+    role: data.role,
+    companyId: data.company_id,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    jobTitle: data.job_title,
+    updatedAt: data.updated_at
+  })
+  
   return data
 }
 

@@ -7,7 +7,10 @@ import { activateCompanyInvitation } from '@/data-access/companies'
 const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
 
 export async function POST(req) {
+  
+  
   if (!webhookSecret) {
+    console.error('❌ CLERK_WEBHOOK_SECRET not found in environment variables')
     throw new Error('Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local')
   }
 
@@ -17,8 +20,11 @@ export async function POST(req) {
   const svix_timestamp = headerPayload.get('svix-timestamp')
   const svix_signature = headerPayload.get('svix-signature')
 
+  
+
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
+    console.error('❌ Missing required svix headers')
     return new Response('Error occured -- no svix headers', {
       status: 400,
     })
@@ -27,6 +33,8 @@ export async function POST(req) {
   // Get the body
   const payload = await req.json()
   const body = JSON.stringify(payload)
+
+  
 
   // Create a new Svix instance with your secret.
   const wh = new Webhook(webhookSecret)
@@ -40,8 +48,9 @@ export async function POST(req) {
       'svix-timestamp': svix_timestamp,
       'svix-signature': svix_signature,
     })
+    
   } catch (err) {
-    console.error('Error verifying webhook:', err)
+    console.error('❌ Error verifying webhook signature:', err)
     return new Response('Error occured', {
       status: 400,
     })
@@ -50,30 +59,35 @@ export async function POST(req) {
   const { id } = evt.data
   const eventType = evt.type
 
+  
+
   if (eventType === 'user.created') {
     const { id: clerkUserId, email_addresses, first_name, last_name, public_metadata } = evt.data
 
-    console.log('User created webhook triggered:', {
-      clerkUserId,
-      email: email_addresses?.[0]?.email_address,
-      firstName: first_name,
-      lastName: last_name,
-      publicMetadata: public_metadata
-    })
+    
 
     try {
+      console.log('🔗 Creating Supabase client...')
       const supabase = createClient()
+      console.log('✅ Supabase client created successfully')
 
       // Check if this user was created from an invitation
       if (public_metadata?.companyId && public_metadata?.invitationId) {
-        console.log('Processing invitation acceptance:', {
+        console.log('📧 Processing invitation acceptance:', {
           invitationId: public_metadata.invitationId,
           companyId: public_metadata.companyId,
-          clerkUserId
+          clerkUserId,
+          userData: {
+            first_name: first_name || public_metadata.firstName,
+            last_name: last_name || public_metadata.lastName,
+            job_title: public_metadata.jobTitle,
+            role: public_metadata.role || 'VIEWER'
+          }
         })
 
         // Update the existing invitation record with the Clerk user ID and set is_active to true
         try {
+          console.log('🔄 Calling activateCompanyInvitation...')
           const result = await activateCompanyInvitation(
             public_metadata.invitationId,
             clerkUserId,
@@ -84,19 +98,35 @@ export async function POST(req) {
               role: public_metadata.role || 'VIEWER'
             }
           )
-          console.log('Successfully activated invitation:', result)
+          console.log('✅ Successfully activated invitation in Supabase:', {
+            invitationId: result.id,
+            userId: result.user_id,
+            isActive: result.is_active,
+            role: result.role,
+            companyId: result.company_id
+          })
         } catch (updateError) {
-          console.error('Error updating invitation record:', updateError)
-          console.error('Update error details:', {
+          console.error('❌ Error updating invitation record:', updateError)
+          console.error('📊 Update error details:', {
             message: updateError.message,
             code: updateError.code,
-            details: updateError.details
+            details: updateError.details,
+            hint: updateError.hint
           })
+          throw updateError // Re-throw to be caught by outer try-catch
         }
       } else {
-        console.log('User created without invitation metadata, creating basic record')
+        console.log('👤 User created without invitation metadata, creating basic record')
+        console.log('📝 User data to insert:', {
+          user_id: clerkUserId,
+          first_name: first_name,
+          last_name: last_name,
+          role: 'USER',
+          is_active: false
+        })
+        
         // Create a basic company member entry for users not created from invitations
-        const { error } = await supabase
+        const { data: insertData, error } = await supabase
           .from('company_members')
           .insert({
             user_id: clerkUserId,
@@ -105,18 +135,41 @@ export async function POST(req) {
             role: 'USER',
             is_active: false, // Set to false until they're assigned to a company
           })
+          .select()
 
         if (error) {
-          console.error('Error creating company member record:', error)
+          console.error('❌ Error creating company member record:', error)
+          console.error('📊 Insert error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw error // Re-throw to be caught by outer try-catch
         } else {
-          console.log('Created basic company member record for user:', clerkUserId)
+          console.log('✅ Created basic company member record in Supabase:', {
+            recordId: insertData?.[0]?.id,
+            userId: insertData?.[0]?.user_id,
+            isActive: insertData?.[0]?.is_active,
+            role: insertData?.[0]?.role
+          })
         }
       }
     } catch (error) {
-      console.error('Error processing webhook:', error)
+      console.error('❌ Error processing webhook:', error)
+      console.error('📊 Full error object:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        stack: error.stack
+      })
       return new Response('Error processing webhook', { status: 500 })
     }
+  } else {
+    console.log('ℹ️ Unhandled webhook event type:', eventType)
   }
 
+  console.log('✅ Webhook processing completed successfully at:', new Date().toISOString())
   return NextResponse.json({ received: true })
 }

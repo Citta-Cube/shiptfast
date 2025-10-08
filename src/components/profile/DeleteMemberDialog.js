@@ -42,7 +42,12 @@ export default function DeleteMemberDialog({ member, onMemberDeleted }) {
         throw new Error(result.error || 'Failed to delete member')
       }
 
-      toast.success(`${result.deletedMember.name} has been removed from the team`)
+      // Show success message with details about what was deleted
+      const successMessage = result.clerkDeletion?.success 
+        ? `${result.deletedMember.name} has been completely removed from the team and their account has been deleted`
+        : `${result.deletedMember.name} has been removed from the team`
+      
+      toast.success(successMessage)
       
       // Call the callback to refresh the member list
       if (onMemberDeleted) {
@@ -78,7 +83,12 @@ export default function DeleteMemberDialog({ member, onMemberDeleted }) {
           <AlertDialogDescription>
             Are you sure you want to permanently delete <strong>{memberName}</strong> from your team? 
             <br /><br />
-            <strong>This action cannot be undone!</strong> The member record will be completely removed from the database and they will lose access to the company account immediately.
+            <strong>This action cannot be undone!</strong> This will:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Remove their access to the company account immediately</li>
+              <li>Delete their user account from the authentication system</li>
+              <li>Permanently remove all their data from the database</li>
+            </ul>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
