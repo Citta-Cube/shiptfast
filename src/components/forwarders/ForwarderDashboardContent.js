@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -16,6 +17,8 @@ import ForwarderSearchAndFilter from '@/components/forwarders/ForwarderSearchAnd
 import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
 
 const ForwarderDashboardContent = ({ initialFilters = {} }) => {
+  const router = useRouter();
+  const pathname = usePathname();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,24 +40,27 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     applyFilters();
   }, [orders, activeFilters]);
 
+  // Sync internal state when URL search params (via props) change
   useEffect(() => {
-    const queryParams = new URLSearchParams();
-    
-    if (activeFilters.shipmentType !== 'all') 
-      queryParams.set('shipmentType', activeFilters.shipmentType);
-    if (activeFilters.loadType !== 'all') 
-      queryParams.set('loadType', activeFilters.loadType);
-    if (activeFilters.status !== 'all') 
-      queryParams.set('status', activeFilters.status);
-    if (activeFilters.sortBy) 
-      queryParams.set('sortBy', activeFilters.sortBy);
+    setActiveFilters(prev => ({
+      ...prev,
+      shipmentType: initialFilters.shipmentType || 'all',
+      loadType: initialFilters.loadType || 'all',
+      status: initialFilters.status || 'all',
+      sortBy: initialFilters.sortBy || 'shipmentDate'
+    }));
+  }, [initialFilters]);
 
-    const newUrl = queryParams.toString()
-      ? `${window.location.pathname}?${queryParams.toString()}`
-      : window.location.pathname;
-          
-    window.history.replaceState({}, '', newUrl);
-  }, [activeFilters]);
+  const navigateWithFilters = (nextFilters) => {
+    const queryParams = new URLSearchParams();
+    if ((nextFilters.shipmentType || 'all') !== 'all') queryParams.set('shipmentType', nextFilters.shipmentType);
+    if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
+    if ((nextFilters.status || 'all') !== 'all') queryParams.set('status', nextFilters.status);
+    if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
+    const newUrl = queryParams.toString() ? `${pathname}?${queryParams.toString()}` : pathname;
+    router.push(newUrl);
+    router.refresh();
+  };
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -93,10 +99,10 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       result = result.filter(order => order.load_type.toLowerCase() === activeFilters.loadType);
     }
 
-    // Apply status filter for forwarder-specific statuses
+    // Apply status filter (compare in lowercase for consistency with URL params)
     if (activeFilters.status !== 'all') {
-      const status = activeFilters.status.toUpperCase();
-      result = result.filter(order => order.status === status);
+      const status = String(activeFilters.status || '').toLowerCase();
+      result = result.filter(order => String(order.status || '').toLowerCase() === status);
     }
 
     // Apply sorting
@@ -122,7 +128,11 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   }, [orders, activeFilters]);
 
   const handleFilterChange = (filterType, value) => {
-    setActiveFilters(prev => ({ ...prev, [filterType]: value }));
+    setActiveFilters(prev => {
+      const updated = { ...prev, [filterType]: value };
+      navigateWithFilters(updated);
+      return updated;
+    });
   };
 
   const toggleViewMode = () => {
@@ -149,7 +159,14 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       );
     }
 
-    return <ForwarderOrderTabs orders={filteredOrders} viewMode={viewMode} />;
+    return (
+      <ForwarderOrderTabs
+        orders={filteredOrders}
+        viewMode={viewMode}
+        statusParam={activeFilters.status}
+        onStatusChange={(value) => handleFilterChange('status', value)}
+      />
+    );
   };
 
   return (

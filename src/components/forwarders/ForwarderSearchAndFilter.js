@@ -38,10 +38,10 @@ const ForwarderSearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoad
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Order Statuses</SelectItem>
-          <SelectItem value="open">Open</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="closed">Closed</SelectItem>
-          <SelectItem value="cancelled">Cancelled</SelectItem>
+          <SelectItem value="open">Open Requests</SelectItem>
+          <SelectItem value="pending">Pending Quotes</SelectItem>
+          <SelectItem value="selected">Won Orders</SelectItem>
+          <SelectItem value="rejected">Rejected Quotes</SelectItem>
         </SelectContent>
       </Select>
       <Select value={activeFilters.sortBy} onValueChange={onSort}>
