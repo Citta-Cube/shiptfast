@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createClient } from '@/lib/supabase/server'
+import { deleteClerkUser, checkClerkUserExists } from '@/lib/clerk-utils'
 
 export async function PATCH(req, { params }) {
   try {
@@ -138,24 +139,68 @@ export async function DELETE(req, { params }) {
       return NextResponse.json({ error: 'Cannot delete your own record' }, { status: 403 })
     }
 
-    // Hard delete the member record from database
+    // Step 1: Delete user from Clerk (if they exist)
+    let clerkDeletionResult = null
+    if (memberToDelete.user_id) {
+      try {
+        
+        const userExists = await checkClerkUserExists(memberToDelete.user_id)
+        
+        if (userExists) {
+          
+          clerkDeletionResult = await deleteClerkUser(memberToDelete.user_id)
+          
+        } else {
+          
+        }
+      } catch (clerkError) {
+        console.error('❌ [DELETE] Error deleting user from Clerk:', clerkError)
+        console.error('📊 [DELETE] Clerk deletion error details:', {
+          message: clerkError.message,
+          status: clerkError.status,
+          clerkUserId: memberToDelete.user_id
+        })
+        
+        
+      }
+    } else {
+      
+    }
+
+    // Step 2: Hard delete the member record from Supabase database
+    
     const { error: deleteError } = await supabase
       .from('company_members')
       .delete()
       .eq('id', memberId)
 
     if (deleteError) {
-      console.error('Error deleting member:', deleteError)
-      return NextResponse.json({ error: 'Failed to delete member' }, { status: 500 })
+      console.error('❌ [DELETE] Error deleting member from Supabase:', deleteError)
+      console.error('📊 [DELETE] Supabase deletion error details:', {
+        message: deleteError.message,
+        code: deleteError.code,
+        details: deleteError.details,
+        memberId
+      })
+      return NextResponse.json({ error: 'Failed to delete member from database' }, { status: 500 })
     }
 
-    return NextResponse.json({ 
+    
+
+    // Prepare response
+    const response = {
       message: 'Member deleted successfully',
       deletedMember: {
         id: memberId,
-        name: `${memberToDelete.first_name} ${memberToDelete.last_name}`
-      }
-    })
+        name: `${memberToDelete.first_name} ${memberToDelete.last_name}`,
+        clerkUserId: memberToDelete.user_id
+      },
+      clerkDeletion: clerkDeletionResult
+    }
+
+    
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error('Error in DELETE /api/companies/members/[id]:', error)

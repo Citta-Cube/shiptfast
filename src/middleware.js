@@ -5,6 +5,7 @@ import { getUserCompanyMembership } from "@/data-access/companies";
 // Public routes (landing + auth pages)
 const isPublicRoute = createRouteMatcher([
   "/",
+  "/api/webhooks/clerk",
   "/auth(.*)",   // catch-all auth
   "/signin(.*)",
   "/signup(.*)"
