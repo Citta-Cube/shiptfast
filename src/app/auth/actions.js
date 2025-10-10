@@ -1,76 +1,35 @@
 'use server'
 
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@clerk/nextjs'
+import { reconcilePendingInvitationsForUser } from '@/data-access/companies'
 
-export async function login(formData) {
-  const email = formData.get('email')
-  const password = formData.get('password')
+// These actions are no longer needed since Clerk handles auth
+// But keeping for any custom logic you might need
 
-  const supabase = createClient()
+export async function getUserInfo() {
+  const { userId } = auth()
+  return { userId }
+}
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (error) {
-    throw new Error(error.message)
+// Reconcile pending invitations for a user
+export async function reconcileUserInvitations(clerkUserId, primaryEmail) {
+  try {
+    if (!clerkUserId || !primaryEmail) return { updated: 0 }
+    
+    const result = await reconcilePendingInvitationsForUser(clerkUserId, primaryEmail)
+    return result
+  } catch (error) {
+    console.error('Failed to reconcile pending invitations:', error)
+    return { updated: 0, error: error.message }
   }
+}
 
+// Redirect functions for after auth
+export async function redirectToDashboard() {
   redirect('/dashboard')
 }
 
-export async function signup(formData) {
-  const email = formData.get('email')
-  const password = formData.get('password')
-  const name = formData.get('name')
-
-  const supabase = createClient()
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: name,
-      },
-    },
-  })
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  // Redirect to a confirmation page or login
-  redirect('/auth/confirmation')
-}
-
-export async function logout() {
-  const supabase = createClient()
-  const { error } = await supabase.auth.signOut()
-  
-  if (error) {
-    throw new Error(error.message)
-  }
-  
+export async function redirectToHome() {
   redirect('/')
-}
-
-export async function forgotPassword(formData) {
-  const supabase = createClient()
-  
-  const email = formData.get('email')
-
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
-  })
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  // If successful, return a message
-  return { message: 'Password reset email sent. Check your inbox.' }
 }

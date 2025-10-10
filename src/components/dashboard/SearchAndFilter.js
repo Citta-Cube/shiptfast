@@ -2,7 +2,8 @@ import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onFilterStatus, onSort, activeFilters }) => {
+const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onFilterStatus, onSort, onFilterTradeType, activeFilters }) => {
+
   return (
     <div className="mb-6 flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0">
       <Input
@@ -12,12 +13,22 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
         value={activeFilters.searchTerm}
         className="md:w-1/4"
       />
+      <Select value={activeFilters.tradeType} onValueChange={onFilterTradeType}>
+        <SelectTrigger className="md:w-1/5">
+          <SelectValue placeholder="Trade Type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Trades</SelectItem>
+          <SelectItem value="import">Import</SelectItem>
+          <SelectItem value="export">Export</SelectItem>
+        </SelectContent>
+      </Select>
       <Select value={activeFilters.shipmentType} onValueChange={onFilterShipmentType}>
         <SelectTrigger className="md:w-1/5">
           <SelectValue placeholder="Shipment Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="all">All Shipment Types</SelectItem>
           <SelectItem value="sea">Sea Freight</SelectItem>
           <SelectItem value="air">Air Freight</SelectItem>
         </SelectContent>
@@ -27,7 +38,7 @@ const SearchAndFilter = ({ onSearch, onFilterShipmentType, onFilterLoadType, onF
           <SelectValue placeholder="Load Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="all">All Load Types</SelectItem>
           <SelectItem value="fcl">FCL</SelectItem>
           <SelectItem value="lcl">LCL</SelectItem>
         </SelectContent>

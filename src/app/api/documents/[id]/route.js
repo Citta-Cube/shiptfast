@@ -11,11 +11,17 @@ export async function DELETE(request, { params }) {
     // TODO: Check if user has permission to delete document from user session 
 
     await deleteDocument(params.id);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Document and associated files deleted successfully' 
+    });
   } catch (error) {
     console.error('Document deletion error:', error);
     return NextResponse.json(
-      { error: 'Failed to delete document' },
+      { 
+        error: 'Failed to delete document',
+        details: error.message 
+      },
       { status: 500 }
     );
   }

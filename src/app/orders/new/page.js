@@ -64,6 +64,13 @@ const NewOrderPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate that at least one freight forwarder is selected
+    if (!orderData.selectedForwarders || orderData.selectedForwarders.length === 0) {
+      toast.error("Please select at least one freight forwarder to create the order");
+      return;
+    }
+    
     const formData = new FormData();
 
     try {
@@ -168,6 +175,11 @@ const NewOrderPage = () => {
       
       const data = await response.json();
       setFreightForwarders(data);
+      // By default, select all loaded forwarders. Users can customize afterwards via UI toggles.
+      setOrderData(prev => ({
+        ...prev,
+        selectedForwarders: Array.isArray(data) ? data.map(f => f.id) : []
+      }));
     } catch (error) {
       console.error('Error fetching freight forwarders:', error);
       toast.error("Failed to load freight forwarders");
@@ -295,7 +307,11 @@ const NewOrderPage = () => {
 
             {/* Submit Button */}
             <div className="flex justify-end">
-              <Button type="submit" className="w-full sm:w-auto">
+              <Button 
+                type="submit" 
+                className="w-full sm:w-auto"
+                disabled={!orderData.selectedForwarders || orderData.selectedForwarders.length === 0}
+              >
                 Create Order
               </Button>
             </div>

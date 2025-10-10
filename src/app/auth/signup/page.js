@@ -1,15 +1,11 @@
-// app/auth/signup/page.js
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { signup } from '@/app/auth/actions';
+import { Loader2 } from "lucide-react";
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -45,74 +41,71 @@ export default function SignUp() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Card className="w-[350px] shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Sign Up</CardTitle>
-          <CardDescription className="text-center">
-            Create an account to get started
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="you@example.com"
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                placeholder="••••••••"
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input 
-                id="confirmPassword" 
-                type="password" 
-                placeholder="••••••••"
-                value={confirmPassword} 
-                onChange={(e) => setConfirmPassword(e.target.value)} 
-                required 
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button 
-              type="submit" 
-              className="w-full" 
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background/50 to-background">
+      <div className="relative w-full max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-w-64">
+          <h1 className="text-2xl font-medium">Sign up</h1>
+          <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              name="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              name="password"
+              placeholder="Your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            <button
+              type="submit"
+              className="bg-primary text-primary-foreground py-2 px-4 rounded mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing Up...' : 'Sign Up'}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button 
-            variant="link" 
-            className="text-sm text-gray-500"
-            onClick={() => router.push('/auth/signin')}
-          >
-            Already have an account? Sign In
-          </Button>
-        </CardFooter>
-      </Card>
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  Signing Up...
+                </>
+              ) : (
+                "Sign up"
+              )}
+            </button>
+            {error && (
+              <div className="text-red-500 text-sm mt-2">{error}</div>
+            )}
+            <div className="text-sm text-center text-gray-500 mt-4">
+              Already have an account?{' '}
+              <button
+                type="button"
+                className="text-primary underline p-0 bg-transparent"
+                onClick={() => router.push('/auth/signin')}
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
