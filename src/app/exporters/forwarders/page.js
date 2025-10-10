@@ -13,27 +13,25 @@ const FreightForwardersDashboard = () => {
   const [forwarders, setForwarders] = useState([]);
   const [filters, setFilters] = useState({ status: 'all', services: 'all', search: '', sort: 'default' });
 
-  useEffect(() => {
-    fetchForwarders();
-  }, [filters]);
-
-  const fetchForwarders = async () => {
+  const fetchForwarders = React.useCallback(async () => {
     try {
       const queryParams = new URLSearchParams();
       if (filters.status !== 'all') queryParams.append('status', filters.status.toUpperCase());
       if (filters.services !== 'all') queryParams.append('services', filters.services.toUpperCase());
       if (filters.search) queryParams.append('search', filters.search);
       if (filters.sort !== 'default') queryParams.append('sort', filters.sort);
-      
       const response = await fetch(`/api/freight-forwarders?${queryParams.toString()}`);
       if (!response.ok) throw new Error('Failed to fetch forwarders');
       const data = await response.json();
       setForwarders(data);
     } catch (error) {
       console.error('Error fetching forwarders:', error);
-      // You might want to add toast notification here
     }
-  };
+  }, [filters.status, filters.services, filters.search, filters.sort]);
+
+  useEffect(() => {
+    fetchForwarders();
+  }, [fetchForwarders]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));

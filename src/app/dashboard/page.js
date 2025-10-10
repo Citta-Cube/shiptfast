@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getUserCompanyMembership } from '@/data-access/companies';
 import { getCurrentUser } from '@/data-access/users';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage({ searchParams }) {
   // Get authenticated user
   const user = await getCurrentUser();

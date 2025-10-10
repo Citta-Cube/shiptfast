@@ -161,7 +161,7 @@ export const useOrderForm = ({ freightForwarders }) => {
 
   useEffect(() => {
     if (orderData.shipmentType) {
-      const relevantForwarders = freightForwarders
+      const relevantForwarders = (freightForwarders || [])
         .filter(ff => ff.services.includes(orderData.shipmentType))
         .map(ff => ff.id);
       setOrderData(prevData => ({
@@ -169,7 +169,7 @@ export const useOrderForm = ({ freightForwarders }) => {
         selectedForwarders: relevantForwarders
       }));
     }
-  }, [orderData.shipmentType]);
+  }, [orderData.shipmentType, freightForwarders]);
 
   return {
     orderData,
