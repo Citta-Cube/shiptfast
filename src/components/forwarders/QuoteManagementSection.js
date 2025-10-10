@@ -258,7 +258,7 @@ const QuoteManagementSection = ({
             <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Quotes Submitted</h3>
             <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              You haven't submitted any quotes for this order yet.
+              You haven&apos;t submitted any quotes for this order yet.
             </p>
             <Button onClick={() => handleOpenDialog()}>Submit Quote</Button>
           </div>

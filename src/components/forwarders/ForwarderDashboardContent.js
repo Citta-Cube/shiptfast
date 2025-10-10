@@ -38,7 +38,7 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
 
   useEffect(() => {
     applyFilters();
-  }, [orders, activeFilters]);
+  }, [orders, activeFilters, applyFilters]);
 
   // Sync internal state when URL search params (via props) change
   useEffect(() => {

@@ -14,7 +14,7 @@ const EmptyState = () => (
     <PackageSearch className="h-16 w-16 text-muted-foreground mb-4" />
     <h3 className="text-lg font-semibold mb-2">No Quotations Yet</h3>
     <p className="text-sm text-muted-foreground max-w-sm">
-      Freight forwarders haven't submitted any quotes for this shipment yet. 
+      Freight forwarders haven&apos;t submitted any quotes for this shipment yet. 
       Check back soon or contact support for assistance.
     </p>
   </div>
