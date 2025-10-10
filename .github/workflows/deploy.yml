@@ -24,7 +24,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run ESLint
         run: npm run lint
@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@latest --legacy-peer-deps
 
       - name: Pull Vercel Environment Info
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
@@ -88,7 +88,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@latest --legacy-peer-deps
 
       - name: Pull Vercel Environment Info
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}

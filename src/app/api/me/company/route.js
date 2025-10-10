@@ -2,6 +2,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { auth } from "@clerk/nextjs/server";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const supabase = createClient();

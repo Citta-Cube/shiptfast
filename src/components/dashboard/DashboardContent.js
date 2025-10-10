@@ -16,7 +16,7 @@ const DashboardContent = ({ initialFilters = {} }) => {
     const [viewMode, setViewMode] = useState('grid');
     const [activeFilters, setActiveFilters] = useState({
         searchTerm: '',
-      tradeType: initialFilters.tradeType || 'all',
+        tradeType: initialFilters.tradeType || 'all',
         shipmentType: initialFilters.shipmentType || 'all',
         loadType: initialFilters.loadType || 'all',
         status: initialFilters.status || 'all',
@@ -29,15 +29,11 @@ const DashboardContent = ({ initialFilters = {} }) => {
     }, []);
 
     useEffect(() => {
-        applyFilters();
-    }, [orders, activeFilters]);
-
-    useEffect(() => {
         const queryParams = new URLSearchParams();
         
-    if (activeFilters.tradeType !== 'all') 
-        queryParams.set('tradeType', activeFilters.tradeType);
-    if (activeFilters.shipmentType !== 'all') 
+        if (activeFilters.tradeType !== 'all') 
+            queryParams.set('tradeType', activeFilters.tradeType);
+        if (activeFilters.shipmentType !== 'all') 
             queryParams.set('shipmentType', activeFilters.shipmentType);
         if (activeFilters.loadType !== 'all') 
             queryParams.set('loadType', activeFilters.loadType);
@@ -117,7 +113,7 @@ const DashboardContent = ({ initialFilters = {} }) => {
             }
         }
 
-    // Apply shipment type filter
+        // Apply shipment type filter
         if (activeFilters.shipmentType !== 'all') {
             result = result.filter(order => order.shipment_type.toLowerCase() === activeFilters.shipmentType);
         }
@@ -146,10 +142,15 @@ const DashboardContent = ({ initialFilters = {} }) => {
         }
 
         setFilteredOrders(result);
-    }, [orders, activeFilters]);
+    }, [orders, activeFilters, companyType, exporterCountryCode]);
+
+    // Moved below applyFilters to avoid TDZ when reading it in the deps array
+    useEffect(() => {
+        applyFilters();
+    }, [orders, activeFilters, applyFilters]);
 
     const handleFilterChange = (filterType, value) => {
-      setActiveFilters(prev => ({ ...prev, [filterType]: value }));
+        setActiveFilters(prev => ({ ...prev, [filterType]: value }));
     };
 
     const toggleViewMode = () => {
@@ -177,25 +178,25 @@ const DashboardContent = ({ initialFilters = {} }) => {
     };
 
     return (
-      <>
-        <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Orders Dashboard</h1>
-            <Button variant="outline" size="sm" onClick={toggleViewMode}>
-                {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
-                {viewMode === 'grid' ? 'List View' : 'Grid View'}
-            </Button>
-        </div>
-        <SearchAndFilter
-            activeFilters={activeFilters}
-            onSearch={(value) => handleFilterChange('searchTerm', value)}
-            onFilterTradeType={(value) => handleFilterChange('tradeType', value)}
-            onFilterShipmentType={(value) => handleFilterChange('shipmentType', value)}
-            onFilterLoadType={(value) => handleFilterChange('loadType', value)}
-            onFilterStatus={(value) => handleFilterChange('status', value)}
-            onSort={(value) => handleFilterChange('sortBy', value)}
-        />
-        {renderOrders()}
-      </>
+        <>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+                <Button variant="outline" size="sm" onClick={toggleViewMode}>
+                    {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
+                    {viewMode === 'grid' ? 'List View' : 'Grid View'}
+                </Button>
+            </div>
+            <SearchAndFilter
+                activeFilters={activeFilters}
+                onSearch={(value) => handleFilterChange('searchTerm', value)}
+                onFilterTradeType={(value) => handleFilterChange('tradeType', value)}
+                onFilterShipmentType={(value) => handleFilterChange('shipmentType', value)}
+                onFilterLoadType={(value) => handleFilterChange('loadType', value)}
+                onFilterStatus={(value) => handleFilterChange('status', value)}
+                onSort={(value) => handleFilterChange('sortBy', value)}
+            />
+            {renderOrders()}
+        </>
     );
 };
 

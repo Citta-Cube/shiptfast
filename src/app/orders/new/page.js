@@ -1,6 +1,8 @@
 // src/app/orders/new/page.js
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,7 @@ import { formConfig } from '@/config/orderFormConfig';
 import { toast } from "sonner";
 import { useRouter } from 'next/navigation';
 import { FreightForwarderCard, FreightForwarderCardSkeleton } from '@/components/orders/create/FreightForwarderCard';
+import { Suspense } from 'react';
 
 // Main component
 const NewOrderPage = () => {
@@ -258,6 +261,7 @@ const NewOrderPage = () => {
 
 
   return (
+    <Suspense fallback={<div>Loading...</div>}>
     <div>
         <h1 className="text-2xl font-bold mb-6">Create New Order</h1>
       <Card>
@@ -319,6 +323,7 @@ const NewOrderPage = () => {
         </CardContent>
       </Card>
     </div>
+    </Suspense>
   );
 };
 
