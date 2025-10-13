@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 
-
-const supabase = createClient();
 export async function getOrderById(id) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('orders')
     .select('*, companies(*), origin_port:ports!origin_port_id(*), destination_port:ports!destination_port_id(*)')
@@ -14,6 +13,7 @@ export async function getOrderById(id) {
 }
 
 export async function getAllOrders() {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('orders')
     .select(`
@@ -35,6 +35,7 @@ export async function getAllOrders() {
 
 export async function createOrder(orderData, selectedForwarderIds, documents = []) {
   // TODO: Check if user has permission to create order from user session 
+  const supabase = createClient();
   const { data: order, error: orderError } = await supabase
     .rpc('create_order', {
       order_data: {
@@ -67,6 +68,7 @@ export async function createOrder(orderData, selectedForwarderIds, documents = [
 }
 
 export async function getOrdersByExporter(exporterId, status) {
+  const supabase = createClient();
   let query = supabase
     .from('orders')
     .select('*, companies(*)')
@@ -83,6 +85,7 @@ export async function getOrdersByExporter(exporterId, status) {
 }
 
 export async function getOrderDocuments(orderId) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('documents')
     .select(`
@@ -98,6 +101,7 @@ export async function getOrderDocuments(orderId) {
 
 export async function getOrderQuotes(orderId) {
   try {
+    const supabase = createClient();
     const { data: quotes, error } = await supabase
       .from('quotes')
       .select(`
@@ -133,6 +137,7 @@ export async function getOrderQuotes(orderId) {
 export async function cancelOrder(orderId) {
   try {
     // TODO: Check if user has permission to cancel order from user session 
+    const supabase = createClient();
     const { data: existingOrder, error: checkError } = await supabase
       .from('orders')
       .select('id, status')

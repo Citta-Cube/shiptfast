@@ -2,6 +2,7 @@ import { getExportersByForwarder } from '@/data-access/companies';
 import { getCurrentUser } from '@/data-access/users';
 import { getUserCompanyMembership } from '@/data-access/companies';
 import { redirect } from 'next/navigation';
+import Image from 'next/image';
 import { Building, Mail, Phone, Globe, MapPin, Star, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +55,7 @@ export default async function ExportersPage() {
             <Building className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Exporters Found</h3>
             <p className="text-muted-foreground text-center max-w-md">
-              You don't have any active relationships with exporters yet. 
+              You don&apos;t have any active relationships with exporters yet. 
               Exporters will appear here once they start working with your company.
             </p>
           </CardContent>
@@ -67,10 +68,12 @@ export default async function ExportersPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
                     {exporter.iconurl ? (
-                      <img 
+                      <Image 
                         src={exporter.iconurl} 
                         alt={exporter.name}
-                        className="w-10 h-10 rounded-full object-cover"
+                        width={40}
+                        height={40}
+                        className="rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

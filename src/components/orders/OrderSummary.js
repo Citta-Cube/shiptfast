@@ -161,12 +161,33 @@ const OrderSummary = ({ order }) => {
           <p className="text-sm font-medium">Incoterm</p>
           <p>{order.incoterm}</p>
         </div>
-        {Object.entries(order.order_details || {}).map(([key, value]) => (
-          <div key={key}>
-            <p className="text-sm font-medium">{formatKeyToReadable(key)}</p>
-            <p>{value}</p>
-          </div>
-        ))}
+        {Object.entries(order.order_details || {}).map(([key, value]) => {
+          // Handle palletizedCargo object specially
+          if (key === 'palletizedCargo' && typeof value === 'object' && value !== null) {
+            return (
+              <div key={key} className="col-span-2">
+                <p className="text-sm font-medium">Palletized Cargo</p>
+                <div className="text-sm space-y-1">
+                  <p>Pallets: {value.pallets?.length || 0}</p>
+                  <p>Total Gross Weight: {value.totalGrossWeight?.toFixed(2) || 0} kg</p>
+                  <p>Total Chargeable Weight: {value.totalChargeableWeight?.toFixed(2) || 0} kg</p>
+                </div>
+              </div>
+            );
+          }
+          
+          // Handle other object values by converting to string
+          const displayValue = typeof value === 'object' && value !== null 
+            ? JSON.stringify(value) 
+            : value;
+            
+          return (
+            <div key={key}>
+              <p className="text-sm font-medium">{formatKeyToReadable(key)}</p>
+              <p>{displayValue}</p>
+            </div>
+          );
+        })}
         {/* Render additional fields based on shipment type */}
         {/* {order.shipmentType === 'air' && (
           <>
