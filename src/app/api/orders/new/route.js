@@ -88,10 +88,5 @@ export async function POST(req) {
   }
 }
 
-// Configure the route to handle large file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-    maxDuration: 60, // Set maximum duration to 60 seconds
-  },
-}; 
+// Route segment config for API route
+export const maxDuration = 60;

@@ -1,12 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import ForwarderOrderList from './ForwarderOrderList';
 
-const ForwarderOrderTabs = ({ orders, viewMode }) => {
-  const [activeTab, setActiveTab] = useState('open');
+const VALID_TABS = new Set(['all','open','quoted','pending','rejected','selected']);
+
+const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusChange }) => {
+  const getInitialTab = () => {
+    const normalized = String(statusParam || 'all').toLowerCase();
+    return VALID_TABS.has(normalized) ? normalized : 'all';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab());
+
+  // Keep local active tab in sync with URL/status param
+  useEffect(() => {
+    const normalized = String(statusParam || 'all').toLowerCase();
+    const next = VALID_TABS.has(normalized) ? normalized : 'all';
+    setActiveTab(next);
+  }, [statusParam]);
   
   // Filter orders based on the active tab
   const getFilteredOrders = () => {
@@ -40,8 +54,16 @@ const ForwarderOrderTabs = ({ orders, viewMode }) => {
     selected: orders.filter(order => order.quote_status === 'selected').length
   };
 
+  const handleTabChange = (value) => {
+    const normalized = String(value || 'all').toLowerCase();
+    setActiveTab(normalized);
+    if (typeof onStatusChange === 'function') {
+      onStatusChange(normalized);
+    }
+  };
+
   return (
-    <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+    <Tabs defaultValue="all" value={activeTab} onValueChange={handleTabChange} className="w-full">
       <TabsList className="grid w-full grid-cols-6">
         <TabsTrigger value="all">
           All <Badge className="ml-2 bg-gray-500">{counts.all}</Badge>

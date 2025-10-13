@@ -1,21 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  AlertCircle 
-} from 'lucide-react';
-import { 
-  Alert, 
-  AlertDescription 
-} from '@/components/ui/alert';
-import { Grid, List } from 'lucide-react';
+import { AlertCircle, Grid, List } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import ForwarderMetrics from '@/components/forwarders/ForwarderMetrics';
 import ForwarderSearchAndFilter from '@/components/forwarders/ForwarderSearchAndFilter';
 import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
 
 const ForwarderDashboardContent = ({ initialFilters = {} }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,29 +31,7 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     fetchOrders();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [orders, activeFilters]);
-
-  useEffect(() => {
-    const queryParams = new URLSearchParams();
-    
-    if (activeFilters.shipmentType !== 'all') 
-      queryParams.set('shipmentType', activeFilters.shipmentType);
-    if (activeFilters.loadType !== 'all') 
-      queryParams.set('loadType', activeFilters.loadType);
-    if (activeFilters.status !== 'all') 
-      queryParams.set('status', activeFilters.status);
-    if (activeFilters.sortBy) 
-      queryParams.set('sortBy', activeFilters.sortBy);
-
-    const newUrl = queryParams.toString()
-      ? `${window.location.pathname}?${queryParams.toString()}`
-      : window.location.pathname;
-          
-    window.history.replaceState({}, '', newUrl);
-  }, [activeFilters]);
-
+  // Fetch orders
   const fetchOrders = async () => {
     setIsLoading(true);
     setError(null);
@@ -73,30 +49,34 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
   };
 
+  // Compute filtered orders based on current orders and filters
   const applyFilters = useCallback(() => {
     let result = [...orders];
 
     // Apply search filter
     if (activeFilters.searchTerm) {
-      result = result.filter(order => 
-        order.reference_number.toLowerCase().includes(activeFilters.searchTerm.toLowerCase())
+      const term = activeFilters.searchTerm.toLowerCase();
+      result = result.filter(order =>
+        String(order.reference_number || '').toLowerCase().includes(term)
       );
     }
 
     // Apply shipment type filter
     if (activeFilters.shipmentType !== 'all') {
-      result = result.filter(order => order.shipment_type.toLowerCase() === activeFilters.shipmentType);
+      const st = String(activeFilters.shipmentType || '').toLowerCase();
+      result = result.filter(order => String(order.shipment_type || '').toLowerCase() === st);
     }
 
     // Apply load type filter
     if (activeFilters.loadType !== 'all') {
-      result = result.filter(order => order.load_type.toLowerCase() === activeFilters.loadType);
+      const lt = String(activeFilters.loadType || '').toLowerCase();
+      result = result.filter(order => String(order.load_type || '').toLowerCase() === lt);
     }
 
-    // Apply status filter for forwarder-specific statuses
+    // Apply status filter
     if (activeFilters.status !== 'all') {
-      const status = activeFilters.status.toUpperCase();
-      result = result.filter(order => order.status === status);
+      const status = String(activeFilters.status || '').toLowerCase();
+      result = result.filter(order => String(order.status || '').toLowerCase() === status);
     }
 
     // Apply sorting
@@ -121,8 +101,40 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     setFilteredOrders(result);
   }, [orders, activeFilters]);
 
+  // Run filtering whenever applyFilters (and thus its deps) change
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  // Sync internal state when URL search params (via props) change
+  useEffect(() => {
+    setActiveFilters(prev => ({
+      ...prev,
+      shipmentType: initialFilters.shipmentType || 'all',
+      loadType: initialFilters.loadType || 'all',
+      status: initialFilters.status || 'all',
+      sortBy: initialFilters.sortBy || 'shipmentDate'
+    }));
+  }, [initialFilters]);
+
+  const navigateWithFilters = (nextFilters) => {
+    const queryParams = new URLSearchParams();
+    if ((nextFilters.shipmentType || 'all') !== 'all') queryParams.set('shipmentType', nextFilters.shipmentType);
+    if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
+    if ((nextFilters.status || 'all') !== 'all') queryParams.set('status', nextFilters.status);
+    if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
+
+    const newUrl = queryParams.toString() ? `${pathname}?${queryParams.toString()}` : pathname;
+    router.push(newUrl);
+    router.refresh();
+  };
+
   const handleFilterChange = (filterType, value) => {
-    setActiveFilters(prev => ({ ...prev, [filterType]: value }));
+    setActiveFilters(prev => {
+      const updated = { ...prev, [filterType]: value };
+      navigateWithFilters(updated);
+      return updated;
+    });
   };
 
   const toggleViewMode = () => {
@@ -149,15 +161,22 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       );
     }
 
-    return <ForwarderOrderTabs orders={filteredOrders} viewMode={viewMode} />;
+    return (
+      <ForwarderOrderTabs
+        orders={filteredOrders}
+        viewMode={viewMode}
+        statusParam={activeFilters.status}
+        onStatusChange={(value) => handleFilterChange('status', value)}
+      />
+    );
   };
 
   return (
     <>
       <h1 className="text-2xl font-bold mb-6">Freight Forwarder Dashboard</h1>
-      
+
       <ForwarderMetrics />
-      
+
       <div className="flex justify-between items-center my-6">
         <h2 className="text-xl font-semibold">Order Management</h2>
         <Button variant="outline" size="sm" onClick={toggleViewMode}>
@@ -165,7 +184,7 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
           {viewMode === 'grid' ? 'List View' : 'Grid View'}
         </Button>
       </div>
-      
+
       <ForwarderSearchAndFilter
         activeFilters={activeFilters}
         onSearch={(value) => handleFilterChange('searchTerm', value)}
@@ -174,10 +193,10 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
         onFilterStatus={(value) => handleFilterChange('status', value)}
         onSort={(value) => handleFilterChange('sortBy', value)}
       />
-      
+
       {renderContent()}
     </>
   );
 };
 
-export default ForwarderDashboardContent; 
+export default ForwarderDashboardContent;

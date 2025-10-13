@@ -114,7 +114,7 @@ export default function EditMemberDialog({ member, onMemberUpdated }) {
             Edit Team Member
           </DialogTitle>
           <DialogDescription>
-            Update the team member's information. Email cannot be changed.
+            Update the team member&apos;s information. Email cannot be changed.
           </DialogDescription>
         </DialogHeader>
         

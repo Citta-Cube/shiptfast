@@ -3,6 +3,8 @@ import { getForwarderOrders } from '@/data-access/forwarderOrders';
 import { getCurrentUser } from '@/data-access/users';
 import { getUserCompanyMembership } from '@/data-access/companies';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     // Get the current authenticated user

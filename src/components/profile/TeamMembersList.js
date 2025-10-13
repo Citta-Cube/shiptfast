@@ -44,7 +44,7 @@ export default function TeamMembersList({
         <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-lg font-medium mb-2">No Team Members</h3>
         <p className="text-sm text-muted-foreground max-w-md">
-          You're currently the only member of your company.
+          You&apos;re currently the only member of your company.
         </p>
       </div>
     )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,13 +12,17 @@ export default function PendingInvitations({ companyId }) {
   const [invitations, setInvitations] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    if (companyId) {
-      fetchPendingInvitations()
-    }
-  }, [companyId])
+  const fetchPendingInvitations = useCallback(async () => {
+    // start loading for each fetch
+    setIsLoading(true)
 
-  const fetchPendingInvitations = async () => {
+    // if no companyId, clear and stop
+    if (!companyId) {
+      setInvitations([])
+      setIsLoading(false)
+      return
+    }
+
     try {
       const response = await fetch(`/api/companies/${companyId}/invitations`)
       if (response.ok) {
@@ -30,7 +34,11 @@ export default function PendingInvitations({ companyId }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [companyId])
+
+  useEffect(() => {
+    fetchPendingInvitations()
+  }, [fetchPendingInvitations])
 
   const cancelInvitation = async (invitationId) => {
     try {
@@ -73,7 +81,7 @@ export default function PendingInvitations({ companyId }) {
           Pending Invitations
         </CardTitle>
         <CardDescription>
-          Invitations that haven't been accepted yet
+          Invitations that haven&apos;t been accepted yet
         </CardDescription>
       </CardHeader>
       <CardContent>

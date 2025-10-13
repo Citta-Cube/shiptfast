@@ -13,7 +13,7 @@ export default function NotFound() {
       <h1 className="text-6xl font-bold mb-4">404</h1>
       <h2 className="text-2xl mb-6">Page Not Found</h2>
       <p className="text-lg mb-8 text-center max-w-md">
-        Oops! The page you're looking for doesn't exist or has been moved.
+        Oops! The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
       <div className="flex space-x-4">
         <Button variant="outline" onClick={() => router.back()}>
