@@ -4,6 +4,7 @@ import React from 'react';
 import OrderSummary from '@/components/orders/OrderSummary';
 import DocumentSection from '@/components/orders/DocumentSection';
 import QuoteManagementSection from '@/components/forwarders/QuoteManagementSection';
+import OrderMessagingSheet from '@/components/orders/OrderMessagingSheet';
 
 const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
   // Extract shipment type and load type from order
@@ -16,6 +17,13 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
         <div>
           <h1 className="text-3xl font-bold">Order {order.reference_number}</h1>
           <p className="text-sm text-muted-foreground">ID: {order.id}</p>
+        </div>
+        <div className="flex gap-2">
+          <OrderMessagingSheet 
+            orderId={order.id}
+            order={order}
+            userRole="forwarder"
+          />
         </div>
       </div>
       
