@@ -44,7 +44,8 @@ export async function getUserCompanyMembership(clerkUserId) {
         vat_number,
         created_at,
         is_verified,
-        average_rating
+        average_rating,
+        total_ratings
       )
     `)
     .eq('user_id', clerkUserId)
@@ -278,4 +279,41 @@ export async function deleteCompanyMember(memberId) {
   
   if (deleteError) throw deleteError
   return memberData
+}
+
+export async function getExportersByForwarder(forwarderId) {
+  const { data, error } = await createClient()
+    .from('companies')
+    .select(`
+      id,
+      name,
+      iconurl,
+      email,
+      phone,
+      website,
+      address,
+      description,
+      is_verified,
+      average_rating,
+      total_ratings,
+      total_orders,
+      forwarder_relationships!forwarder_relationships_exporter_fkey (
+        status,
+        blacklist_reason,
+        created_at,
+        updated_at
+      )
+    `)
+    .eq('type', 'EXPORTER')
+    .eq('forwarder_relationships.forwarder_id', forwarderId)
+    .order('name');
+
+  if (error) throw error;
+
+  // Transform the data to get relationship as an object
+  return data?.map(exporter => ({
+    ...exporter,
+    relationship: exporter.forwarder_relationships?.[0] || null,
+    forwarder_relationships: undefined // Remove the original relationships array
+  }));
 }
