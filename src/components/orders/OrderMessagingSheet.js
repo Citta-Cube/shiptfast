@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Sheet,
@@ -15,8 +15,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { MessageSquare, Send, ArrowLeft, Building2, Users } from "lucide-react";
-import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MessageSquare, Send, ArrowLeft, Building2, Users, Loader2 } from "lucide-react";
+import { format, isToday, isYesterday } from "date-fns";
 
 const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   const { user } = useUser();
@@ -29,6 +31,10 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   const [isSending, setIsSending] = useState(false);
   const [companyConversations, setCompanyConversations] = useState([]);
   const [currentView, setCurrentView] = useState('companies'); // 'companies' or 'chat'
+
+  const scrollAreaRef = useRef(null);
+  const textareaRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -162,6 +168,38 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
     }
   }, [messages, processMessagesIntoConversations]);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (currentView === 'chat' && messagesEndRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, currentView, selectedCompany]);
+
+  // Focus textarea when view changes
+  useEffect(() => {
+    if ((currentView === 'chat' || currentView === 'broadcast') && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [currentView]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        if (currentView !== 'companies') {
+          handleBackToCompanies();
+        } else {
+          setIsOpen(false);
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [isOpen, currentView]);
+
   const sendToAllCompanies = async () => {
     if (!messageText.trim()) return;
 
@@ -200,6 +238,23 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   const handleBackToCompanies = () => {
     setCurrentView('companies');
     setSelectedCompany(null);
+    setMessageText('');
+  };
+
+  const formatMessageTime = (date) => {
+    const messageDate = new Date(date);
+    if (isToday(messageDate)) {
+      return format(messageDate, 'HH:mm');
+    } else if (isYesterday(messageDate)) {
+      return 'Yesterday';
+    } else {
+      return format(messageDate, 'MMM d');
+    }
+  };
+
+  const getMessageCount = (companyId) => {
+    const conversation = companyConversations.find(conv => conv.company.id === companyId);
+    return conversation?.messages.length || 0;
   };
 
   const handleSendMessage = async () => {
@@ -231,15 +286,34 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   };
 
   const renderCompanyList = () => {
-    const availableCompanies = userRole === 'exporter' 
+    const availableCompanies = userRole === 'exporter'
       ? recipients.map(r => ({ ...r.companies, type: 'forwarder' }))
       : recipients.companies ? [{ ...recipients.companies, type: 'exporter' }] : [];
 
+    if (isLoading) {
+      return (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center p-3">
+              <Skeleton className="h-10 w-10 rounded-full mr-3" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     if (availableCompanies.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No companies available for messaging</p>
+        <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+          <div className="bg-muted rounded-full p-4 mb-4">
+            <Building2 className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="font-medium mb-1">No companies available</p>
+          <p className="text-sm text-muted-foreground">There are no companies to message for this order</p>
         </div>
       );
     }
@@ -248,8 +322,8 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
       <div className="space-y-2">
         {userRole === 'exporter' && recipients.length > 1 && (
           <>
-            <div 
-              className="flex items-center p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-colors"
+            <div
+              className="flex items-center p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-all hover:shadow-sm border border-transparent hover:border-border"
               onClick={() => setCurrentView('broadcast')}
             >
               <Avatar className="h-10 w-10 mr-3">
@@ -261,35 +335,44 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
                 <div className="font-medium">All Freight Forwarders</div>
                 <div className="text-sm text-muted-foreground">Send to all companies</div>
               </div>
+              <Badge variant="secondary">{recipients.length}</Badge>
             </div>
-            <Separator />
+            <Separator className="my-2" />
           </>
         )}
-        
+
         {availableCompanies.map(company => {
           const conversation = companyConversations.find(conv => conv.company.id === company.id);
+          const messageCount = getMessageCount(company.id);
           return (
             <div
               key={company.id}
-              className="flex items-center p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-colors"
+              className="flex items-center p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-all hover:shadow-sm border border-transparent hover:border-border"
               onClick={() => handleCompanySelect(company)}
             >
               <Avatar className="h-10 w-10 mr-3">
-                <AvatarFallback className="bg-blue-100 text-blue-600">
+                <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
                   {company.name?.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{company.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate">{company.name}</span>
+                  {messageCount > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      {messageCount}
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground truncate">
-                  {conversation?.lastMessage 
-                    ? conversation.lastMessage.message 
-                    : 'No messages yet'}
+                  {conversation?.lastMessage
+                    ? conversation.lastMessage.message
+                    : 'Start a conversation'}
                 </div>
               </div>
               {conversation?.lastMessage && (
-                <div className="text-xs text-muted-foreground">
-                  {format(new Date(conversation.lastMessage.created_at), 'MMM d')}
+                <div className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                  {formatMessageTime(conversation.lastMessage.created_at)}
                 </div>
               )}
             </div>
@@ -304,53 +387,62 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
 
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center p-4 border-b">
+        <div className="flex items-center p-4 border-b bg-muted/30">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBackToCompanies}
-            className="mr-3"
+            className="mr-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Avatar className="h-8 w-8 mr-3">
-            <AvatarFallback>
-              {selectedCompany.name?.[0]}{selectedCompany.name?.[1]}
+          <Avatar className="h-9 w-9 mr-3">
+            <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold text-sm">
+              {selectedCompany.name?.substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <div className="font-medium">{selectedCompany.name}</div>
-            <div className="text-sm text-muted-foreground">
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold truncate">{selectedCompany.name}</div>
+            <div className="text-xs text-muted-foreground capitalize">
               {selectedCompany.company_type?.replace('_', ' ').toLowerCase()}
             </div>
           </div>
         </div>
-        
+
         {renderChatMessages()}
-        
-        <div className="p-4 border-t">
+
+        <div className="p-4 border-t bg-background">
           <div className="flex gap-2">
             <Textarea
+              ref={textareaRef}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              placeholder={`Message ${selectedCompany.name}...`}
-              className="flex-1 min-h-[60px] resize-none"
+              placeholder={`Type a message...`}
+              className="flex-1 min-h-[60px] max-h-[120px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSendMessage();
                 }
               }}
+              disabled={isSending}
             />
             <Button
               onClick={handleSendMessage}
               disabled={!messageText.trim() || isSending}
               size="sm"
-              className="self-end"
+              className="self-end h-[60px] w-[60px]"
             >
-              <Send className="h-4 w-4" />
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Press Enter to send, Shift+Enter for new line, Esc to go back
+          </p>
         </div>
       </div>
     );
@@ -362,60 +454,106 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
     const conversation = companyConversations.find(conv => conv.company.id === selectedCompany.id);
     const conversationMessages = conversation?.messages || [];
 
+    if (isLoading) {
+      return (
+        <div className="flex-1 px-4 py-4 space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+              <div className="max-w-[70%] space-y-2">
+                <Skeleton className="h-16 w-64" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     if (conversationMessages.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No messages sent yet</p>
-          <p className="text-sm text-muted-foreground">Start the conversation!</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+          <div className="bg-muted rounded-full p-4 mb-4">
+            <MessageSquare className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <p className="font-medium mb-1">No messages yet</p>
+          <p className="text-sm text-muted-foreground">
+            Start the conversation with {selectedCompany.name}
+          </p>
         </div>
       );
     }
 
     return (
-      <ScrollArea className="flex-1 px-4">
+      <ScrollArea className="flex-1 px-4" ref={scrollAreaRef}>
         <div className="space-y-4 py-4">
-          {conversationMessages.map((message) => {
+          {conversationMessages.map((message, index) => {
             const isCurrentUserMessage = message.sent_by?.user_id === user?.id;
-            
+            const showDateDivider = index === 0 ||
+              new Date(conversationMessages[index - 1].created_at).toDateString() !==
+              new Date(message.created_at).toDateString();
+
             return (
-              <div
-                key={message.id}
-                className={`flex ${isCurrentUserMessage ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-lg p-3 ${
-                    isCurrentUserMessage
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  {!isCurrentUserMessage && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <Avatar className="h-5 w-5">
-                        <AvatarFallback className="text-xs">
-                          {message.sent_by?.first_name?.[0]}{message.sent_by?.last_name?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs font-medium">
-                        {message.sent_by?.first_name} {message.sent_by?.last_name}
-                      </span>
-                      <span className="text-xs opacity-60">
-                        from {message.sender_company?.name}
-                      </span>
+              <React.Fragment key={message.id}>
+                {showDateDivider && (
+                  <div className="flex items-center justify-center my-4">
+                    <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
+                      {isToday(new Date(message.created_at))
+                        ? 'Today'
+                        : isYesterday(new Date(message.created_at))
+                        ? 'Yesterday'
+                        : format(new Date(message.created_at), 'MMMM d, yyyy')}
                     </div>
-                  )}
-                  <p className="text-sm">{message.message}</p>
-                  <div className={`text-xs mt-1 ${isCurrentUserMessage ? 'opacity-70' : 'opacity-60'}`}>
-                    {format(new Date(message.created_at), 'MMM d, HH:mm')}
-                    {isCurrentUserMessage && (
-                      <span className="ml-2">✓</span>
+                  </div>
+                )}
+                <div
+                  className={`flex ${isCurrentUserMessage ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[75%] rounded-2xl p-3 shadow-sm ${
+                      isCurrentUserMessage
+                        ? 'bg-primary text-primary-foreground rounded-br-sm'
+                        : 'bg-muted rounded-bl-sm'
+                    }`}
+                  >
+                    {!isCurrentUserMessage && (
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback className="text-xs bg-background">
+                            {message.sent_by?.first_name?.[0]}{message.sent_by?.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs font-semibold">
+                          {message.sent_by?.first_name} {message.sent_by?.last_name}
+                        </span>
+                        <span className="text-[10px] opacity-60">•</span>
+                        <span className="text-[10px] opacity-70 font-medium">
+                          {message.sender_company?.name}
+                        </span>
+                      </div>
                     )}
+                    {isCurrentUserMessage && (
+                      <div className="flex items-center gap-1.5 mb-1.5 justify-end">
+                        <span className="text-[10px] opacity-70 font-medium">
+                          {message.sender_company?.name}
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                      {message.message}
+                    </p>
+                    <div className={`text-[10px] mt-1.5 flex items-center gap-1 ${
+                      isCurrentUserMessage ? 'opacity-80 justify-end' : 'opacity-70'
+                    }`}>
+                      <span>{format(new Date(message.created_at), 'HH:mm')}</span>
+                      {isCurrentUserMessage && (
+                        <span>✓</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </React.Fragment>
             );
           })}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
     );
@@ -424,57 +562,84 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   const renderBroadcastView = () => {
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center p-4 border-b">
+        <div className="flex items-center p-4 border-b bg-muted/30">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBackToCompanies}
-            className="mr-3"
+            className="mr-2 -ml-2"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Avatar className="h-8 w-8 mr-3">
+          <Avatar className="h-9 w-9 mr-3">
             <AvatarFallback className="bg-primary text-primary-foreground">
               <Users className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
-          <div>
-            <div className="font-medium">All Freight Forwarders</div>
-            <div className="text-sm text-muted-foreground">Send to all companies</div>
+          <div className="flex-1">
+            <div className="font-semibold">All Freight Forwarders</div>
+            <div className="text-xs text-muted-foreground">
+              Broadcasting to {recipients.length} companies
+            </div>
           </div>
         </div>
-        
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium mb-2">Broadcast Message</p>
-            <p className="text-sm text-muted-foreground">Your message will be sent to all freight forwarders</p>
+
+        <div className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <div className="bg-primary/10 rounded-full p-6 inline-flex mb-4">
+              <Users className="h-12 w-12 text-primary" />
+            </div>
+            <p className="text-lg font-semibold mb-2">Broadcast Message</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Your message will be sent to all {recipients.length} freight forwarders simultaneously
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {recipients.slice(0, 5).map((r) => (
+                <Badge key={r.companies?.id} variant="secondary" className="text-xs">
+                  {r.companies?.name}
+                </Badge>
+              ))}
+              {recipients.length > 5 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{recipients.length - 5} more
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
-        
-        <div className="p-4 border-t">
+
+        <div className="p-4 border-t bg-background">
           <div className="flex gap-2">
             <Textarea
+              ref={textareaRef}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Type your message to all companies..."
-              className="flex-1 min-h-[60px] resize-none"
+              placeholder="Type your broadcast message..."
+              className="flex-1 min-h-[60px] max-h-[120px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   sendToAllCompanies();
                 }
               }}
+              disabled={isSending}
             />
             <Button
               onClick={sendToAllCompanies}
               disabled={!messageText.trim() || isSending}
               size="sm"
-              className="self-end"
+              className="self-end h-[60px] w-[60px]"
             >
-              <Send className="h-4 w-4" />
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Press Enter to broadcast, Shift+Enter for new line, Esc to go back
+          </p>
         </div>
       </div>
     );
@@ -489,25 +654,31 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
         </Button>
       </SheetTrigger>
       <SheetContent className="w-[600px] sm:max-w-[600px] flex flex-col p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle>Order Messages</SheetTitle>
+        <SheetHeader className="px-6 py-4 border-b bg-background">
+          <SheetTitle className="text-lg">Order Messages</SheetTitle>
           <SheetDescription>
-            Communicate about Order #{order?.reference_number}
+            Communicate about Order <span className="font-medium text-foreground">#{order?.reference_number}</span>
           </SheetDescription>
         </SheetHeader>
-        
-        <div className="flex-1 flex flex-col min-h-0">
+
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {currentView === 'companies' && (
-            <div className="p-4">
-              <h3 className="font-medium mb-4">Select Company</h3>
-              <ScrollArea className="flex-1">
+            <div className="flex flex-col h-full">
+              <div className="px-6 pt-4 pb-3">
+                <h3 className="font-semibold text-base">Select Company</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Choose a company to start messaging
+                </p>
+              </div>
+              <Separator />
+              <ScrollArea className="flex-1 px-4 py-2">
                 {renderCompanyList()}
               </ScrollArea>
             </div>
           )}
-          
+
           {currentView === 'chat' && renderSelectedCompanyChat()}
-          
+
           {currentView === 'broadcast' && renderBroadcastView()}
         </div>
       </SheetContent>
