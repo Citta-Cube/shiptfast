@@ -1,9 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import OrderSummary from './OrderSummary';
 import DocumentSection from './DocumentSection';
 import QuotationSection from './quotations/QuotationSection';
+import OrderMessagingSheet from './OrderMessagingSheet';
 
 // Mocked API function
 const fetchHistoricalData = (startPort, endPort) => {
@@ -18,7 +20,8 @@ const fetchHistoricalData = (startPort, endPort) => {
   });
 };
 
-const OrderDetailContent = ({ order, documents, quotes }) => {
+const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
+  const { user } = useUser();
   const [currentOrder, setCurrentOrder] = useState(order);
   const [historicalData, setHistoricalData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +72,13 @@ const OrderDetailContent = ({ order, documents, quotes }) => {
         <div>
           <h1 className="text-3xl font-bold">Order {currentOrder.reference_number}</h1>
           <p className="text-sm text-muted-foreground">ID: {currentOrder.id}</p>
+        </div>
+        <div className="flex gap-2">
+          <OrderMessagingSheet 
+            orderId={currentOrder.id}
+            order={currentOrder}
+            userRole={userRole}
+          />
         </div>
       </div>
       

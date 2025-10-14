@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Ship, Plane, Package, Box, CircleX, AlertTriangle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator"
 import { formatDateTimeToReadable, formatKeyToReadable } from "@/lib/utils";
 import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -106,11 +107,11 @@ const OrderSummary = ({ order }) => {
       <CardContent className="grid grid-cols-2 gap-4">
         <div>
           <p className="text-sm font-medium">Cargo Ready Date</p>
-          <p>{formatDateTimeToReadable(order.cargo_ready_date)}</p>
+          <p className="text-sm font-small text-muted-foreground">{formatDateTimeToReadable(order.cargo_ready_date)}</p>
         </div>
         <div>
           <p className="text-sm font-medium">Quotation Deadline</p>
-          <p>{formatDateTimeToReadable(order.quotation_deadline)}</p>
+          <p className="text-sm font-small text-muted-foreground">{formatDateTimeToReadable(order.quotation_deadline)}</p>
         </div>
         <div>
           <p className="text-sm font-medium">Status</p>
@@ -145,26 +146,66 @@ const OrderSummary = ({ order }) => {
           <p>{order.load_type}</p>
         </div>
         <div className="col-span-2 flex items-center space-x-2">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={`https://flagcdn.com/w20/${order.origin_port?.country_code.toLowerCase()}.png`} />
-              <AvatarFallback>{order.origin_port?.country_code}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium">{order.origin_port?.name}</span>
-            <span className="text-sm">→</span>
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={`https://flagcdn.com/w20/${order.destination_port?.country_code.toLowerCase()}.png`} />
-              <AvatarFallback>{order.destination_port?.country_code}</AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium">{order.destination_port?.name}</span>
+        <Avatar className="h-6 w-6">
+            <AvatarImage src={`https://flagcdn.com/w20/${order.origin_port?.country_code.toLowerCase()}.png`} />
+            <AvatarFallback>{order.origin_port?.country_code}</AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-medium">{order.origin_port?.name}</span>
+          <span className="text-sm">→</span>
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={`https://flagcdn.com/w20/${order.destination_port?.country_code.toLowerCase()}.png`} />
+            <AvatarFallback>{order.destination_port?.country_code}</AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-medium">{order.destination_port?.name}</span>
         </div>
         <div>
           <p className="text-sm font-medium">Incoterm</p>
-          <p>{order.incoterm}</p>
+          <p className="text-sm font-small text-muted-foreground">{order.incoterm}</p>
         </div>
         {Object.entries(order.order_details || {}).map(([key, value]) => (
-          <div key={key}>
+          <div key={key} className={key === 'palletizedCargo' ? 'col-span-2' : undefined}>
             <p className="text-sm font-medium">{formatKeyToReadable(key)}</p>
-            <p>{value}</p>
+            {key === 'palletizedCargo' && value ? (
+              <div className="space-y-1">
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-small ">Total Gross Weight: </span>
+                  <span>{value.totalGrossWeight?.toFixed(2) || 0} kg</span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-small">Total Chargeable Weight: </span>
+                  <span>{value.totalChargeableWeight?.toFixed(2) || 0} kg</span>
+                </div>
+                <div className="py-2">
+                </div>
+                
+                {value.pallets && value.pallets.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Individual Pallets: {value.pallets.length}</p>
+                    {value.pallets.map((pallet, index) => (
+                      <div key={pallet.id || index}>
+                        <div className="text-xs p-3 rounded text-muted-foreground">
+                          <div className="flex flex-wrap gap-4">
+                            <div>Length: {pallet.length || 0} cm</div>
+                            <div>Width: {pallet.width || 0} cm</div>
+                            <div>Height: {pallet.height || 0} cm</div>
+                            <div>Weight: {pallet.grossWeight || 0} kg</div>
+                            <div className="text-gray-500 text-muted-foreground">
+                              Chargeable: {pallet.chargeableWeight?.toFixed(2) || 0} kg
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Add separator except after the last item */}
+                        {index < value.pallets.length - 1 && <Separator className="my-2" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              </div>
+            ) : (
+              <p className="text-sm font-small text-muted-foreground">{typeof value === 'object' ? JSON.stringify(value) : value}</p>
+            )}
           </div>
         ))}
         {/* Render additional fields based on shipment type */}
