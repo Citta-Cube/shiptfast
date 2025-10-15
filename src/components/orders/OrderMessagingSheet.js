@@ -404,7 +404,7 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
           <div className="flex-1 min-w-0">
             <div className="font-semibold truncate">{selectedCompany.name}</div>
             <div className="text-xs text-muted-foreground capitalize">
-              {selectedCompany.company_type?.replace('_', ' ').toLowerCase()}
+              {(selectedCompany.type || selectedCompany.company_type)?.replace('_', ' ').toLowerCase()}
             </div>
           </div>
         </div>

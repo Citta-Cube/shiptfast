@@ -45,6 +45,8 @@ export async function POST(req) {
         documents // Pass the documents array to createOrder
       );
 
+      // Notifications are created by DB triggers upon order insert
+
       return NextResponse.json(
         { 
           success: true, 

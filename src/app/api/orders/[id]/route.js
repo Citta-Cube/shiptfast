@@ -29,7 +29,18 @@ export async function PATCH(request, { params }) {
             );
         }
 
+        // Get the order's current status before cancelling
+        const currentOrder = await getOrderById(id);
+        if (!currentOrder) {
+            return NextResponse.json(
+                { error: 'Order not found' },
+                { status: 404 }
+            );
+        }
+
         const cancelledOrder = await cancelOrder(id);
+        // Notifications are created by DB triggers; no manual dispatch here
+
         return NextResponse.json(cancelledOrder);
         
     } catch (error) {

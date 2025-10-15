@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { auth } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 import { reconcilePendingInvitationsForUser } from '@/data-access/companies'
 
 // These actions are no longer needed since Clerk handles auth

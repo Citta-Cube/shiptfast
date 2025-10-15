@@ -124,6 +124,8 @@ export async function POST(request) {
       .eq('order_id', orderId)
       .eq('freight_forwarder_id', forwarderId);
 
+    // Notifications are created by DB triggers on quotes insert
+
     return NextResponse.json({ success: true, quoteId });
     
   } catch (error) {
