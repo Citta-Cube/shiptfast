@@ -316,7 +316,7 @@ export async function notifyQuoteReceived(quote, order, forwarder) {
       data: {
         order_reference: order.reference,
         forwarder_name: forwarder.name,
-  quote_amount: quote.net_freight_cost,
+        quote_amount: quote.net_freight_cost,
         currency: quote.currency
       }
     });
@@ -344,7 +344,7 @@ export async function notifyQuoteSelected(quote, order, exporter) {
       data: {
         order_reference: order.reference,
         exporter_name: exporter.name,
-  quote_amount: quote.net_freight_cost
+        quote_amount: quote.net_freight_cost
       }
     });
 
@@ -360,7 +360,7 @@ export async function notifyQuoteSelected(quote, order, exporter) {
  */
 export async function notifyNewMessage(message, order, sender, recipientCompanyId) {
   try {
-  const isFromExporter = (sender.type || sender.company_type) === 'EXPORTER';
+    const isFromExporter = (sender.type || sender.company_type) === 'EXPORTER';
     
     const notification = await createNotification({
       recipientCompanyId: recipientCompanyId,
@@ -488,8 +488,8 @@ export async function markAllNotificationsAsRead(userId) {
   }
 }
 
-// Export all functions
-export default {
+// Create the default export object
+const notificationService = {
   NotificationTypes,
   createNotification,
   getUserNotifications,
@@ -505,3 +505,6 @@ export default {
   notifyNewMessage,
   createDeadlineNotifications
 };
+
+// Export the named object as default
+export default notificationService;

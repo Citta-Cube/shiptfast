@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Bell, Check, X, MessageSquare, Package, FileText, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -163,7 +163,7 @@ const NotificationPanel = () => {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     
     setLoading(true);
@@ -178,9 +178,9 @@ const NotificationPanel = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     if (!user?.id) return;
     
     try {
@@ -192,7 +192,7 @@ const NotificationPanel = () => {
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
-  };
+  }, [user?.id]);
 
   const markAsRead = async (notificationId) => {
     try {
@@ -258,7 +258,7 @@ const NotificationPanel = () => {
         fetchNotifications(); // Only fetch all notifications when panel is open
       }
     }
-  }, [user?.id, isOpen]);
+  }, [user?.id, isOpen, fetchNotifications, fetchUnreadCount]);
 
   // Auto-refresh unread count every 30 seconds
   useEffect(() => {
@@ -266,14 +266,14 @@ const NotificationPanel = () => {
     
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
-  }, [user?.id]);
+  }, [user?.id, fetchUnreadCount]);
 
   // Refresh notifications when panel is opened
   useEffect(() => {
     if (isOpen && user?.id) {
       fetchNotifications();
     }
-  }, [isOpen, user?.id]);
+  }, [isOpen, user?.id, fetchNotifications]);
 
   if (!user) {
     return null;
@@ -322,7 +322,7 @@ const NotificationPanel = () => {
                 No notifications
               </h3>
               <p className="text-sm text-muted-foreground">
-                You're all caught up! New notifications will appear here.
+                You&apos;re all caught up! New notifications will appear here.
               </p>
             </div>
           ) : (
