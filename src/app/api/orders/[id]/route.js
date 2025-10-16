@@ -2,6 +2,7 @@
 import { mockOrders } from '@/mockData/detailedOrders';
 import { NextResponse } from 'next/server';
 import { getOrderById, cancelOrder } from '@/data-access/orders';
+import { processEmailNotifications } from '@/lib/email/processNotifications';
 
 export async function GET(request, { params }) {
     const id = params.id;
@@ -39,7 +40,12 @@ export async function PATCH(request, { params }) {
         }
 
         const cancelledOrder = await cancelOrder(id);
-        // Notifications are created by DB triggers; no manual dispatch here
+        // Send email immediately for ORDER_CANCELLED to selected forwarders
+        try {
+            await processEmailNotifications({ types: ['ORDER_CANCELLED'], orderId: id })
+        } catch (e) {
+            console.error('Email dispatch for order cancelled failed:', e)
+        }
 
         return NextResponse.json(cancelledOrder);
         
