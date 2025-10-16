@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { auth } from "@clerk/nextjs/server";
+import { processEmailNotifications } from '@/lib/email/processNotifications'
 
 export async function POST(request) {
   try {
@@ -123,6 +124,14 @@ export async function POST(request) {
       .update({ is_submitted: true })
       .eq('order_id', orderId)
       .eq('freight_forwarder_id', forwarderId);
+
+    // Notifications are created by DB triggers on quotes insert
+    // Send email immediately for this quote to the exporter
+    try {
+      await processEmailNotifications({ types: ['QUOTE_RECEIVED'], orderId, quoteId })
+    } catch (e) {
+      console.error('Email dispatch for quote received failed:', e)
+    }
 
     return NextResponse.json({ success: true, quoteId });
     

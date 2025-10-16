@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { selectQuote } from '@/data-access/quotes';
 import { getOrderById } from '@/data-access/orders';
+import { processEmailNotifications } from '@/lib/email/processNotifications';
 
 export async function PATCH(request, { params }) {
   try {
@@ -25,6 +26,14 @@ export async function PATCH(request, { params }) {
 
     // Select the quote
     await selectQuote(orderId, quoteId);
+
+    // DB triggers create the notification. Send email immediately for this quote.
+    try {
+      await processEmailNotifications({ types: ['QUOTE_SELECTED'], orderId, quoteId });
+    } catch (notificationError) {
+      console.error('Email dispatch for quote selected failed:', notificationError);
+      // Do not fail the request if emails fail
+    }
 
     return NextResponse.json({
       message: 'Quote selected successfully'
