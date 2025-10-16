@@ -1,4 +1,3 @@
-import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { Webhook } from 'svix'
 import { createClient } from '@/lib/supabase/server'
@@ -6,19 +5,19 @@ import { activateCompanyInvitation } from '@/data-access/companies'
 
 const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
 
+// Svix requires Node.js runtime
+export const runtime = 'nodejs'
+
 export async function POST(req) {
-  
-  
   if (!webhookSecret) {
     console.error('❌ CLERK_WEBHOOK_SECRET not found in environment variables')
     throw new Error('Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env or .env.local')
   }
 
-  // Get the headers
-  const headerPayload = headers()
-  const svix_id = headerPayload.get('svix-id')
-  const svix_timestamp = headerPayload.get('svix-timestamp')
-  const svix_signature = headerPayload.get('svix-signature')
+  // Read headers directly from the request to ensure we get the original values
+  const svix_id = req.headers.get('svix-id')
+  const svix_timestamp = req.headers.get('svix-timestamp')
+  const svix_signature = req.headers.get('svix-signature')
 
   
 
@@ -30,9 +29,8 @@ export async function POST(req) {
     })
   }
 
-  // Get the body
-  const payload = await req.json()
-  const body = JSON.stringify(payload)
+  // Read the raw body for signature verification
+  const body = await req.text()
 
   
 
