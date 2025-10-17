@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createOrder } from '@/data-access/orders';
 import { uploadDocuments } from '@/data-access/document';
+import { processEmailNotifications } from '@/lib/email/processNotifications';
 
 const supabase = createClient();
 
@@ -44,6 +45,14 @@ export async function POST(req) {
         selectedForwarderIds,
         documents // Pass the documents array to createOrder
       );
+
+      // Notifications are created by DB triggers upon order insert
+      // Send email immediately to selected forwarders for ORDER_CREATED
+      try {
+        await processEmailNotifications({ types: ['ORDER_CREATED'], orderId: result?.order_id || result?.id })
+      } catch (e) {
+        console.error('Email dispatch for order created failed:', e)
+      }
 
       return NextResponse.json(
         { 

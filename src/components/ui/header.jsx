@@ -10,6 +10,7 @@ import { exporterConfig, forwarderConfig } from '@/config/dashboard'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { createClient } from '@/lib/supabase/client'
+import NotificationPanel from '@/components/notifications/NotificationPanel'
 
 const Header = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -160,6 +161,9 @@ const Header = ({ userType = 'EXPORTER' }) => {
         })}
       </nav>
       <div className="flex items-center gap-2">
+        {/* Notifications Panel */}
+        <NotificationPanel />
+        
         {/* User Profile Section - Click to navigate to profile */}
         <div 
           onClick={handleProfileClick}

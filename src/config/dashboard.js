@@ -121,6 +121,11 @@ export const forwarderConfig = {
       ]
     },
     {
+      title: "Analytics",
+      href: "/forwarders/analytics",
+      icon: LineChart,
+    },
+    {
       title: "Order Management",
       href: "/forwarders/orders",
       icon: Package,

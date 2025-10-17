@@ -5,6 +5,9 @@ export async function POST(request) {
   try {
     const messageData = await request.json();
     const newMessage = await sendOrderMessage(messageData);
+    
+    // Notifications are created by DB trigger on order_messages insert
+    
     return NextResponse.json(newMessage);
   } catch (error) {
     console.error('Error sending message:', error);
