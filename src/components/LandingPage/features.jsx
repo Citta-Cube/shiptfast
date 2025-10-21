@@ -61,9 +61,9 @@ const Feature166 = ({
     )
 
   return (
-    <section className="py-32">
+    <section className="py-16">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-24 flex flex-col items-center gap-6">
+        <div className="mb-12 flex flex-col items-center gap-6">
           <h1 className="text-center text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
             {title}
           </h1>

@@ -66,9 +66,9 @@ const Pricing04 = () => {
 
   return (
     <TooltipProvider>
-      <section className="bg-transparent py-32" id="pricing">
+      <section className="bg-transparent py-16" id="pricing">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-16">
+          <div className="text-center mb-8">
             <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight mb-4">
               Choose Your Plan
             </h1>
@@ -80,7 +80,7 @@ const Pricing04 = () => {
           <Tabs
             value={selectedBillingPeriod}
             onValueChange={setSelectedBillingPeriod}
-            className="flex justify-center mb-12"
+            className="flex justify-center mb-8"
           >
             <TabsList className="h-11 bg-muted border rounded-full">
               <TabsTrigger
@@ -169,7 +169,7 @@ const Pricing04 = () => {
           </div>
 
           {/* Additional info */}
-          <div className="text-center mt-12">
+          <div className="text-center mt-8">
             <p className="text-muted-foreground text-sm">
               All plans include 14-day free trial • No credit card required • Cancel anytime
             </p>
