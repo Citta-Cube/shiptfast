@@ -317,3 +317,30 @@ export async function getExportersByForwarder(forwarderId) {
     forwarder_relationships: undefined // Remove the original relationships array
   }));
 }
+
+/**
+ * Check if a rating exists for a specific order and forwarder
+ * @param {string} orderId - The order ID
+ * @param {string} raterCompanyId - The company ID of the rater
+ * @returns {Promise<Object|null>} - Existing rating or null
+ */
+export async function getExistingRating(orderId, raterCompanyId) {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('company_ratings')
+      .select('*')
+      .eq('order_id', orderId)
+      .eq('rater_company_id', raterCompanyId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error checking existing rating:', error);
+    throw error;
+  }
+}

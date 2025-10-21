@@ -4,7 +4,6 @@ import QuotationRow from './QuotationRow';
 import { tableColumns } from '@/config/shipmentConfig';
 
 const QuotationTable = ({ quotations, order, onSelectAgent }) => {
-  console.log(quotations);
   return (
     <Table>
       <TableHeader>
