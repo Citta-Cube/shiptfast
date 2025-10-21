@@ -3,10 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, PackageSearch } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Download, PackageSearch, FileText, ChevronDown } from 'lucide-react';
 import QuotationTable from './QuotationTable';
+import SelectedQuoteSection from './SelectedQuoteSection';
 import { useQuotations } from '@/hooks/useQuotations';
-import { exportToCSV } from '@/lib/csvExport';
+import { exportToCSV, exportToPDF } from '@/lib/csvExport';
 import { sortOptions } from '@/config/shipmentConfig';
 
 const EmptyState = () => (
@@ -30,61 +37,109 @@ const QuotationSection = ({ order, quotes, onSelectAgent }) => {
   } = useQuotations(quotes);
 
   const hasQuotes = quotes && quotes.length > 0;
+  
+  // Find the selected quote
+  const selectedQuote = quotes?.find(quote => quote.id === order.selected_quote_id);
+  
+  // Filter out the selected quote from the list to avoid duplication
+  const availableQuotes = quotes?.filter(quote => quote.id !== order.selected_quote_id) || [];
+  
+  // Apply sorting and filtering to available quotes (excluding selected)
+  const {
+    sortedAndFilteredQuotations: filteredAvailableQuotes,
+    sortBy: availableSortBy,
+    setSortBy: setAvailableSortBy,
+    filterText: availableFilterText,
+    setFilterText: setAvailableFilterText
+  } = useQuotations(availableQuotes);
 
   return (  
-    <Card className="col-span-2">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-xl font-bold">
-          Freight Quotations
-          {hasQuotes && (
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({quotes.length} quote{quotes.length !== 1 ? 's' : ''})
-            </span>
+    <div className="col-span-2 space-y-6">
+      {/* Selected Quote Section */}
+      <SelectedQuoteSection order={order} selectedQuote={selectedQuote} />
+      
+      {/* Available Quotations Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-bold">
+            Available Quotations
+            {availableQuotes.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({availableQuotes.length} quote{availableQuotes.length !== 1 ? 's' : ''})
+              </span>
+            )}
+          </CardTitle>
+          {availableQuotes.length > 0 && (
+            <div className="flex space-x-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Include selected quote if it exists, plus all available quotes
+                      const allQuotes = selectedQuote 
+                        ? [selectedQuote, ...filteredAvailableQuotes]
+                        : filteredAvailableQuotes;
+                      exportToCSV(allQuotes, order);
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Include selected quote if it exists, plus all available quotes
+                      const allQuotes = selectedQuote 
+                        ? [selectedQuote, ...filteredAvailableQuotes]
+                        : filteredAvailableQuotes;
+                      exportToPDF(allQuotes, order);
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Input
+                placeholder="Filter quotes..."
+                value={availableFilterText}
+                onChange={(e) => setAvailableFilterText(e.target.value)}
+                className="w-[200px]"
+              />
+              <Select value={availableSortBy} onValueChange={setAvailableSortBy}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
-        </CardTitle>
-        {hasQuotes && (
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => exportToCSV(sortedAndFilteredQuotations, order)}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-            <Input
-              placeholder="Filter quotes..."
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="w-[200px]"
+        </CardHeader>
+        <CardContent>
+          {availableQuotes.length > 0 ? (
+            <QuotationTable 
+              quotations={filteredAvailableQuotes} 
+              order={order} 
+              onSelectAgent={onSelectAgent} 
             />
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent>
-        {hasQuotes ? (
-          <QuotationTable 
-            quotations={sortedAndFilteredQuotations} 
-            order={order} 
-            onSelectAgent={onSelectAgent} 
-          />
-        ) : (
-          <EmptyState />
-        )}
-      </CardContent>
-    </Card>
+          ) : (
+            <EmptyState />
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
