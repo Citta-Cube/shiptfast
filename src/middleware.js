@@ -6,6 +6,7 @@ import { getUserCompanyMembership } from "@/data-access/companies";
 const isPublicRoute = createRouteMatcher([
   "/",
   "/api/webhooks/clerk",
+  "/api/cron(.*)",
   "/auth(.*)",   // catch-all auth
   "/signin(.*)",
   "/signup(.*)"

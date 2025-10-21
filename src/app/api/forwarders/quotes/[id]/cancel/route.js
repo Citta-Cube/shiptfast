@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
+import { processEmailNotifications } from '@/lib/email/processNotifications'
 
 export async function PATCH(request, { params }) {
   try {
@@ -71,6 +72,13 @@ export async function PATCH(request, { params }) {
       .eq('id', quoteId);
       
     if (updateError) throw updateError;
+    
+    // Send email immediately for QUOTE_CANCELLED
+    try {
+      await processEmailNotifications({ types: ['QUOTE_CANCELLED'], quoteId })
+    } catch (e) {
+      console.error('Email dispatch for quote cancelled failed:', e)
+    }
     
     return NextResponse.json({ success: true });
     
