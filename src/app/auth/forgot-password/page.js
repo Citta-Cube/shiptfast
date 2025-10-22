@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
+import { AlertCircle, CheckCircle, X, Mail, Lock, Shield } from "lucide-react";
 import { OTPInput } from "./otp-input"; 
 
 export default function ForgotPassword() {
@@ -24,12 +25,39 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const clearMessages = () => {
+    setError("");
+    setSuccess("");
+  };
+
+  const handleError = (err, defaultMessage) => {
+    const errorMessage = err?.errors?.[0]?.longMessage || err?.message || defaultMessage;
+    setError(errorMessage);
+    setSuccess("");
+    
+    toast.error("Action Failed", {
+      description: errorMessage,
+      icon: <AlertCircle className="h-4 w-4" />,
+      duration: 5000,
+    });
+  };
+
+  const handleSuccess = (message, toastTitle = "Success") => {
+    setSuccess(message);
+    setError("");
+    
+    toast.success(toastTitle, {
+      description: message,
+      icon: <CheckCircle className="h-4 w-4" />,
+      duration: 3000,
+    });
+  };
+
   async function handleEmailSubmit(e) {
     e.preventDefault();
     if (!isLoaded) return;
     setIsLoading(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     try {
       // Initialize a sign-in instance for the identifier
@@ -56,11 +84,10 @@ export default function ForgotPassword() {
         emailAddressId,
       });
 
-      setSuccess("We sent a 6-digit code to your email.");
+      handleSuccess("We sent a 6-digit code to your email.", "Code Sent");
       setStep(2);
     } catch (err) {
-      const msg = err?.errors?.[0]?.longMessage || err?.message || "Failed to send reset code";
-      setError(msg);
+      handleError(err, "Failed to send reset code");
     } finally {
       setIsLoading(false);
     }
@@ -70,8 +97,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     if (!isLoaded) return;
     setIsLoading(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     try {
       const target = siResource || signIn;
@@ -81,14 +107,13 @@ export default function ForgotPassword() {
       });
 
       if (res.status === "needs_new_password") {
-        setSuccess("Code verified. Please set your new password.");
+        handleSuccess("Code verified. Please set your new password.", "Code Verified");
         setStep(3);
       } else {
-        setError("Invalid code or unexpected status.");
+        throw new Error("Invalid code or unexpected status.");
       }
     } catch (err) {
-      const msg = err?.errors?.[0]?.longMessage || err?.message || "Invalid code";
-      setError(msg);
+      handleError(err, "Invalid code");
     } finally {
       setIsLoading(false);
     }
@@ -98,29 +123,31 @@ export default function ForgotPassword() {
     e.preventDefault();
     if (!isLoaded) return;
     setIsLoading(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     try {
       const target = siResource || signIn;
       const res = await target.resetPassword({ password, signOutOfOtherSessions: true });
       if (res.status === "complete") {
         await setActive({ session: res.createdSessionId });
-        router.push("/dashboard");
+        handleSuccess("Password updated successfully! Redirecting to dashboard...", "Password Reset Complete");
+        
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1500);
       } else {
-        setError("Could not set new password. Please try again.");
+        throw new Error("Could not set new password. Please try again.");
       }
     } catch (err) {
-      const msg = err?.errors?.[0]?.longMessage || err?.message || "Failed to set new password";
-      setError(msg);
+      handleError(err, "Failed to set new password");
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Card className="w-[420px] shadow-lg"> {/* Made slightly wider for OTP boxes */}
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background/50 to-background">
+      <Card className="w-[420px] shadow-lg">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Forgot Password</CardTitle>
           <CardDescription className="text-center">
@@ -130,17 +157,6 @@ export default function ForgotPassword() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert className="mb-4 bg-green-50 text-green-700 border-green-200">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
           {step === 1 && (
             <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -151,6 +167,7 @@ export default function ForgotPassword() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                   required
                 />
               </div>
@@ -172,7 +189,7 @@ export default function ForgotPassword() {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Button type="button" variant="ghost" onClick={() => setStep(1)}>
+                <Button type="button" variant="ghost" onClick={() => setStep(1)} disabled={isLoading}>
                   Back
                 </Button>
                 <Button type="submit" disabled={isLoading || code.length !== 6}>
@@ -192,11 +209,12 @@ export default function ForgotPassword() {
                   placeholder="Enter new password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                   required
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Button type="button" variant="ghost" onClick={() => setStep(2)}>
+                <Button type="button" variant="ghost" onClick={() => setStep(2)} disabled={isLoading}>
                   Back
                 </Button>
                 <Button type="submit" disabled={isLoading}>
@@ -205,9 +223,57 @@ export default function ForgotPassword() {
               </div>
             </form>
           )}
+
+          {/* Enhanced Error Message with Red Background */}
+          {error && (
+            <div className="mt-4 p-4 bg-red-600 rounded-lg border border-red-500 relative">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="text-white font-semibold text-sm mb-1">
+                    {step === 1 && "Failed to Send Code"}
+                    {step === 2 && "Code Verification Failed"}
+                    {step === 3 && "Password Update Failed"}
+                  </h4>
+                  <p className="text-white text-sm leading-relaxed">
+                    {error}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearMessages}
+                  className="text-white hover:text-red-200 transition-colors p-1 rounded-full hover:bg-red-700"
+                  aria-label="Close error message"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message with Green Background */}
+          {success && (
+            <div className="mt-4 p-4 bg-green-600 rounded-lg border border-green-500">
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  {step === 1 && <Mail className="h-5 w-5 text-white" />}
+                  {step === 2 && <Shield className="h-5 w-5 text-white" />}
+                  {step === 3 && <Lock className="h-5 w-5 text-white" />}
+                </div>
+                <p className="text-white text-sm font-medium">
+                  {success}
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
         <CardFooter className="flex justify-center">
-          <Button variant="link" className="text-sm text-gray-500" onClick={() => router.push("/auth/signin")}>
+          <Button 
+            variant="link" 
+            className="text-sm text-gray-500" 
+            onClick={() => router.push("/auth/signin")}
+            disabled={isLoading}
+          >
             Back to Sign In
           </Button>
         </CardFooter>
