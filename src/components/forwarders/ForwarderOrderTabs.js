@@ -1,26 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import ForwarderOrderList from './ForwarderOrderList';
 
-const VALID_TABS = new Set(['all','open','quoted','pending','rejected','selected']);
-
-const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusChange }) => {
-  const getInitialTab = () => {
-    const normalized = String(statusParam || 'all').toLowerCase();
-    return VALID_TABS.has(normalized) ? normalized : 'all';
-  };
-
-  const [activeTab, setActiveTab] = useState(getInitialTab());
-
-  // Keep local active tab in sync with URL/status param
-  useEffect(() => {
-    const normalized = String(statusParam || 'all').toLowerCase();
-    const next = VALID_TABS.has(normalized) ? normalized : 'all';
-    setActiveTab(next);
-  }, [statusParam]);
+const ForwarderOrderTabs = ({ orders, viewMode }) => {
+  const [activeTab, setActiveTab] = useState('all');
   
   // Filter orders based on the active tab
   const getFilteredOrders = () => {
@@ -37,7 +23,8 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
         case 'rejected':
           return order.quote_status === 'rejected';
         case 'selected':
-          return order.quote_status === 'selected';
+          // Check if quote exists and its status is SELECTED
+          return order.quote && order.quote.status === 'SELECTED';
         default:
           return true;
       }
@@ -51,15 +38,11 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
     quoted: orders.filter(order => order.quote_status === 'quoted').length,
     pending: orders.filter(order => order.quote_status === 'pending').length,
     rejected: orders.filter(order => order.quote_status === 'rejected').length,
-    selected: orders.filter(order => order.quote_status === 'selected').length
+    selected: orders.filter(order => order.quote && order.quote.status === 'SELECTED').length
   };
 
   const handleTabChange = (value) => {
-    const normalized = String(value || 'all').toLowerCase();
-    setActiveTab(normalized);
-    if (typeof onStatusChange === 'function') {
-      onStatusChange(normalized);
-    }
+    setActiveTab(value);
   };
 
   return (
@@ -112,4 +95,4 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
   );
 };
 
-export default ForwarderOrderTabs; 
+export default ForwarderOrderTabs;

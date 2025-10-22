@@ -15,6 +15,7 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const pathname = usePathname();
 
   const [orders, setOrders] = useState([]);
+  console.log(orders);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +24,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     searchTerm: '',
     shipmentType: initialFilters.shipmentType || 'all',
     loadType: initialFilters.loadType || 'all',
-    status: initialFilters.status || 'all',
     sortBy: initialFilters.sortBy || 'shipmentDate'
   });
 
@@ -73,12 +73,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       result = result.filter(order => String(order.load_type || '').toLowerCase() === lt);
     }
 
-    // Apply status filter
-    if (activeFilters.status !== 'all') {
-      const status = String(activeFilters.status || '').toLowerCase();
-      result = result.filter(order => String(order.status || '').toLowerCase() === status);
-    }
-
     // Apply sorting
     if (activeFilters.sortBy) {
       if (activeFilters.sortBy === 'shipmentDate') {
@@ -112,7 +106,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       ...prev,
       shipmentType: initialFilters.shipmentType || 'all',
       loadType: initialFilters.loadType || 'all',
-      status: initialFilters.status || 'all',
       sortBy: initialFilters.sortBy || 'shipmentDate'
     }));
   }, [initialFilters]);
@@ -121,7 +114,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     const queryParams = new URLSearchParams();
     if ((nextFilters.shipmentType || 'all') !== 'all') queryParams.set('shipmentType', nextFilters.shipmentType);
     if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
-    if ((nextFilters.status || 'all') !== 'all') queryParams.set('status', nextFilters.status);
     if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
 
     const newUrl = queryParams.toString() ? `${pathname}?${queryParams.toString()}` : pathname;
@@ -165,8 +157,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       <ForwarderOrderTabs
         orders={filteredOrders}
         viewMode={viewMode}
-        statusParam={activeFilters.status}
-        onStatusChange={(value) => handleFilterChange('status', value)}
       />
     );
   };
@@ -190,7 +180,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
         onSearch={(value) => handleFilterChange('searchTerm', value)}
         onFilterShipmentType={(value) => handleFilterChange('shipmentType', value)}
         onFilterLoadType={(value) => handleFilterChange('loadType', value)}
-        onFilterStatus={(value) => handleFilterChange('status', value)}
         onSort={(value) => handleFilterChange('sortBy', value)}
       />
 
