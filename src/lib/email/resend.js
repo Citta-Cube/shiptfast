@@ -28,7 +28,7 @@ export function getFromAddress() {
 export function getAppUrl() {
   // Prefer NEXT_PUBLIC_APP_URL; fallback to VERCEL_URL or localhost
   const url = process.env.NEXT_PUBLIC_APP_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    || (process.env.VERCEL_URL ? `https://shiptfast.cittacube.ai` : null)
     || 'http://localhost:3000'
   return url.replace(/\/$/, '')
 }
