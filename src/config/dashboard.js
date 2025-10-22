@@ -67,10 +67,7 @@ export const exporterConfig = {
 // Forwarder menu configuration
 export const forwarderConfig = {
   mainNav: [
-    {
-      title: "Quote Requests",
-      href: "/forwarders/orders/open",
-    },
+    
   ],
   sidebarNav: [
     {

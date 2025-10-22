@@ -8,12 +8,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon } from "lucide-react"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon, MoreHorizontal, Edit, Trash2 } from "lucide-react"
 import { format } from 'date-fns'
 import { reconcileUserInvitations } from '@/app/auth/actions'
 import InviteMemberDialog from '@/components/profile/InviteMemberDialog'
 import PendingInvitations from '@/components/profile/PendingInvitations'
-import TeamMembersList from '@/components/profile/TeamMembersList'
+import EditMemberDialog from '@/components/profile/EditMemberDialog'
+import DeleteMemberDialog from '@/components/profile/DeleteMemberDialog'
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser()
@@ -23,6 +27,21 @@ export default function ProfilePage() {
   const [companyMembership, setCompanyMembership] = useState(null)
   const [companyMembers, setCompanyMembers] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Handle member updates
+  const handleMemberUpdated = (updatedMember) => {
+    setCompanyMembers(prevMembers => 
+      prevMembers.map(member => 
+        member.id === updatedMember.id ? updatedMember : member
+      )
+    )
+  }
+
+  const handleMemberDeleted = (deletedMemberId) => {
+    setCompanyMembers(prevMembers => 
+      prevMembers.filter(member => member.id !== deletedMemberId)
+    )
+  }
 
   // Get active tab from URL params
   useEffect(() => {
@@ -406,11 +425,92 @@ export default function ProfilePage() {
                   </CardHeader>
                 
                   <CardContent>
-                    <TeamMembersList 
-                      initialMembers={companyMembers}
-                      currentUserRole={companyMembership?.role}
-                      currentUserId={user.id}
-                    />
+                    {companyMembers.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Member Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Job Title</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {companyMembers.map((member) => (
+                            <TableRow key={member.id}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center space-x-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="text-xs">
+                                      {member.first_name && member.last_name 
+                                        ? `${member.first_name[0]}${member.last_name[0]}`
+                                        : member.email?.charAt(0).toUpperCase() || '?'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span>
+                                    {member.first_name && member.last_name 
+                                      ? `${member.first_name} ${member.last_name}`
+                                      : 'No name provided'}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>{member.email || 'No email'}</TableCell>
+                              <TableCell>{member.job_title || 'Not specified'}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {member.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {(companyMembership?.role === 'ADMIN') && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <span className="sr-only">Open menu</span>
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <EditMemberDialog
+                                        member={member}
+                                        onMemberUpdated={handleMemberUpdated}
+                                        trigger={
+                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Edit Member
+                                          </DropdownMenuItem>
+                                        }
+                                      />
+                                      <DeleteMemberDialog
+                                        member={member}
+                                        onMemberDeleted={handleMemberDeleted}
+                                        trigger={
+                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Remove Member
+                                          </DropdownMenuItem>
+                                        }
+                                      />
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-10">
+                        <UsersIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">No Team Members</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {(companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER') 
+                            ? 'Start building your team by inviting members.'
+                            : 'No other team members found.'}
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 

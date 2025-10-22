@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import ForwarderOrderList from './ForwarderOrderList';
 
-const VALID_TABS = new Set(['all','open','quoted','pending','rejected','selected']);
+const VALID_TABS = new Set(['all', 'open', 'quoted', 'pending', 'rejected', 'selected']);
 
 const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusChange }) => {
   const getInitialTab = () => {
@@ -21,11 +21,11 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
     const next = VALID_TABS.has(normalized) ? normalized : 'all';
     setActiveTab(next);
   }, [statusParam]);
-  
+
   // Filter orders based on the active tab
   const getFilteredOrders = () => {
     if (activeTab === 'all') return orders;
-    
+
     return orders.filter(order => {
       switch (activeTab) {
         case 'open':
@@ -43,7 +43,7 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
       }
     });
   };
-  
+
   // Count orders for each tab
   const counts = {
     all: orders.length,
@@ -84,23 +84,23 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
           Selected <Badge className="ml-2 bg-green-500">{counts.selected}</Badge>
         </TabsTrigger>
       </TabsList>
-      
+
       <TabsContent value="all" className="mt-6">
         <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
       </TabsContent>
-      
+
       <TabsContent value="open" className="mt-6">
         <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
       </TabsContent>
-      
+
       <TabsContent value="quoted" className="mt-6">
         <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
       </TabsContent>
-      
+
       <TabsContent value="pending" className="mt-6">
         <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
       </TabsContent>
-      
+
       <TabsContent value="rejected" className="mt-6">
         <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
       </TabsContent>
