@@ -49,6 +49,7 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
           loadType={loadType}
           originPort={order.origin_port}
           destinationPort={order.destination_port}
+          orderStatus={order.status}
         />
       </div>
     </div>

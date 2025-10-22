@@ -22,7 +22,8 @@ const QuoteManagementSection = ({
   shipmentType, 
   loadType,
   originPort,
-  destinationPort 
+  destinationPort,
+  orderStatus
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
@@ -35,8 +36,8 @@ const QuoteManagementSection = ({
     new Date(b.created_at) - new Date(a.created_at)
   );
   
-  // Allow multiple quotes: always allow submitting a new quote
-  const canSubmitNewQuote = true;
+  // Business Logic: New quotes can only be submitted when order status is OPEN
+  const canSubmitNewQuote = orderStatus === 'OPEN';
   
   const handleOpenDialog = (quote = null) => {
     setSelectedQuote(quote);
@@ -258,9 +259,14 @@ const QuoteManagementSection = ({
             <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Quotes Submitted</h3>
             <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              You haven&apos;t submitted any quotes for this order yet.
+              {orderStatus !== 'OPEN' 
+                ? `Cannot submit quotes when order status is ${orderStatus}. Quotes can only be submitted when the order is OPEN.`
+                : "You haven't submitted any quotes for this order yet."
+              }
             </p>
-            <Button onClick={() => handleOpenDialog()}>Submit Quote</Button>
+            {canSubmitNewQuote && (
+              <Button onClick={() => handleOpenDialog()}>Submit Quote</Button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -288,6 +294,7 @@ const QuoteManagementSection = ({
                   <div className="flex items-center space-x-2">
                     {quote.status === 'ACTIVE' && (
                       <>
+                        {/* Edit Quote - Only available when order status is OPEN */}
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -295,17 +302,20 @@ const QuoteManagementSection = ({
                             e.stopPropagation();
                             handleOpenDialog(quote);
                           }}
+                          disabled={orderStatus !== 'OPEN'}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
                         
+                        {/* Cancel Quote - Only available when order status is OPEN */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
                               variant="destructive" 
                               size="sm"
                               onClick={(e) => e.stopPropagation()}
+                              disabled={orderStatus !== 'OPEN'}
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               Cancel

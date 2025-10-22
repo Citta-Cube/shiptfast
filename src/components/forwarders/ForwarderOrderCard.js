@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,16 +8,35 @@ import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
 import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import UrgentIndicator from '@/components/dashboard/UrgentIndicator';
 import Link from 'next/link';
-import { DollarSign, Clock } from 'lucide-react';
+import { DollarSign, Clock, Loader2 } from 'lucide-react';
 
 const ForwarderOrderCard = ({ order }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleButtonClick = () => {
+    setIsLoading(true);
+    // The loading state will be reset when the page navigation occurs
+    // or component unmounts
+  };
+
   // Determine the quote status and action text
   const getQuoteStatusAndAction = () => {
+    // If order is cancelled, disable button
+    if (order.status === 'CANCELLED') {
+      return {
+        badge: null,
+        actionText: 'Order Cancelled',
+        actionHref: `/forwarders/orders/${order.id}`,
+        disabled: true
+      };
+    }
+
     if (!order.is_submitted) {
       return {
         badge: null,
         actionText: 'Submit Quote',
-        actionHref: `/forwarders/orders/${order.id}`
+        actionHref: `/forwarders/orders/${order.id}`,
+        disabled: false
       };
     }
     
@@ -27,25 +46,29 @@ const ForwarderOrderCard = ({ order }) => {
           return {
             badge: null,
             actionText: 'Edit Quote',
-            actionHref: `/forwarders/orders/${order.id}`
+            actionHref: `/forwarders/orders/${order.id}`,
+            disabled: false
           };
         case 'selected':
           return {
             badge: null,
             actionText: 'Manage Order',
-            actionHref: `/forwarders/orders/${order.id}`
+            actionHref: `/forwarders/orders/${order.id}`,
+            disabled: false
           };
         case 'rejected':
           return {
             badge: null,
             actionText: 'View Details',
-            actionHref: `/forwarders/orders/${order.id}`
+            actionHref: `/forwarders/orders/${order.id}`,
+            disabled: false
           };
         default:
           return {
             badge: null,
             actionText: 'View Details',
-            actionHref: `/forwarders/orders/${order.id}`
+            actionHref: `/forwarders/orders/${order.id}`,
+            disabled: false
           };
       }
     }
@@ -53,11 +76,12 @@ const ForwarderOrderCard = ({ order }) => {
     return {
       badge: null,
       actionText: 'View Details',
-      actionHref: `/forwarders/orders/${order.id}`
+      actionHref: `/forwarders/orders/${order.id}`,
+      disabled: false
     };
   };
   
-  const { badge, actionText, actionHref } = getQuoteStatusAndAction();
+  const { badge, actionText, actionHref, disabled } = getQuoteStatusAndAction();
 
   // Determine what to show in footer
   const getFooterInfo = () => {
@@ -138,6 +162,15 @@ const ForwarderOrderCard = ({ order }) => {
             </Avatar>
             <span className="text-sm font-medium">{order.destination_port.port_code}</span>
           </div>
+          
+          <div className="col-span-2 flex flex-col space-y-1">
+            <span className="text-xs text-muted-foreground">Time Left for Bidding</span>
+            <span className="text-sm font-medium">
+              {order.status === 'OPEN'
+                ? calculateTimeLeft(order.quotation_deadline)
+                : 'Not Accepting Quotes'}
+            </span>
+          </div>
         </div>
       </CardContent>
       
@@ -159,8 +192,20 @@ const ForwarderOrderCard = ({ order }) => {
           )}
           
           <Link href={actionHref} passHref>
-            <Button variant="secondary" className={footerInfo ? '' : 'w-full'}>
-              {actionText}
+            <Button 
+              variant="secondary" 
+              className={`${footerInfo ? '' : 'w-full'} ${!footerInfo ? 'min-w-[120px]' : 'min-w-[100px]'}`}
+              disabled={isLoading}
+              onClick={handleButtonClick}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                actionText
+              )}
             </Button>
           </Link>
         </div>

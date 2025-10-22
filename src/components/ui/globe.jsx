@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useCallback } from "react"
 import createGlobe from "cobe"
 import { useMotionValue, useSpring } from "motion/react"
 import { cn } from "@/lib/utils"
@@ -10,8 +10,8 @@ const MOVEMENT_DAMPING = 1400
 
 export function Globe({ className }) {
   const { theme } = useTheme()
-  let phi = 0
-  let width = 0
+  const phiRef = useRef(0) // Store phi in a ref to persist across renders
+  const widthRef = useRef(0)
   const canvasRef = useRef(null)
   const pointerInteracting = useRef(null)
   const pointerInteractionMovement = useRef(0)
@@ -24,7 +24,7 @@ export function Globe({ className }) {
     stiffness: 100,
   })
 
-  const hslToRgbArray = (hsl) => {
+  const hslToRgbArray = useCallback((hsl) => {
     const el = document.createElement("div")
     el.style.color = hsl
     document.body.appendChild(el)
@@ -32,12 +32,12 @@ export function Globe({ className }) {
     document.body.removeChild(el)
     const [r, g, b] = rgb.match(/\d+/g).map((x) => parseInt(x) / 255)
     return [r, g, b]
-  }
+  }, [])
 
-  const initGlobe = () => {
+  const initGlobe = useCallback(() => {
     if (!canvasRef.current) return
 
-    let width = canvasRef.current.offsetWidth
+    widthRef.current = canvasRef.current.offsetWidth
     const rootStyles = getComputedStyle(document.documentElement)
     const primaryColor = hslToRgbArray(`hsl(${rootStyles.getPropertyValue("--primary")})`)
     const isDark = theme === 'dark'
@@ -47,8 +47,8 @@ export function Globe({ className }) {
     }
 
     const globe = createGlobe(canvasRef.current, {
-      width: width * 2,
-      height: width * 2,
+      width: widthRef.current * 2,
+      height: widthRef.current * 2,
       devicePixelRatio: 2,
       phi: 0,
       theta: 0.3,
@@ -80,20 +80,20 @@ export function Globe({ className }) {
         { location: [41.0082, 28.9784], size: 0.06 },
       ],
       onRender: (state) => {
-        if (!pointerInteracting.current) phi += 0.005
-        state.phi = phi + rs.get()
-        state.width = width * 2
-        state.height = width * 2
+        if (!pointerInteracting.current) phiRef.current += 0.005 // Use ref instead of variable
+        state.phi = phiRef.current + rs.get()
+        state.width = widthRef.current * 2
+        state.height = widthRef.current * 2
       },
     })
 
     globeRef.current = globe
     setTimeout(() => (canvasRef.current.style.opacity = "1"), 0)
-  }
+  }, [theme, rs, hslToRgbArray]) // Include all dependencies
 
   useEffect(() => {
     const onResize = () => {
-      if (canvasRef.current) width = canvasRef.current.offsetWidth
+      if (canvasRef.current) widthRef.current = canvasRef.current.offsetWidth
       initGlobe()
     }
 
@@ -104,7 +104,7 @@ export function Globe({ className }) {
       if (globeRef.current) globeRef.current.destroy()
       window.removeEventListener("resize", onResize)
     }
-  }, [rs, theme]) // Re-run when theme changes
+  }, [initGlobe]) // Now we can safely include initGlobe
 
   const updatePointerInteraction = (value) => {
     pointerInteracting.current = value

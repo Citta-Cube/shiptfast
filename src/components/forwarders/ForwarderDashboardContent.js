@@ -163,17 +163,17 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-6">Freight Forwarder Dashboard</h1>
-
-      <ForwarderMetrics />
-
-      <div className="flex justify-between items-center my-6">
-        <h2 className="text-xl font-semibold">Order Management</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Orders Dashboard</h1>
         <Button variant="outline" size="sm" onClick={toggleViewMode}>
           {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
           {viewMode === 'grid' ? 'List View' : 'Grid View'}
         </Button>
       </div>
+
+      <ForwarderMetrics />
+
+      <div className="my-6" />
 
       <ForwarderSearchAndFilter
         activeFilters={activeFilters}
