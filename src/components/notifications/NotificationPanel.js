@@ -2,19 +2,17 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { Bell, Check, X, MessageSquare, Package, FileText, Clock, AlertCircle } from 'lucide-react';
+import { Bell, Check, MessageSquare, Package, FileText, Clock, CheckCheck, Trash2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 
 const NotificationIcon = ({ type }) => {
-  const iconProps = { className: "w-4 h-4" };
-  
+  const iconProps = { className: 'w-4 h-4' };
+
   switch (type) {
     case 'ORDER_CREATED':
     case 'ORDER_CLOSED':
@@ -35,124 +33,189 @@ const NotificationIcon = ({ type }) => {
   }
 };
 
-const NotificationBadgeColor = ({ type }) => {
+// Text/content, generate titles/messages (company removed)
+const getNotificationContent = (notification) => {
+  const { type, order_reference_number, order_id, data, message, title } = notification;
+
+  const nOrder =
+    order_reference_number ||
+    data?.order_reference ||
+    data?.order_reference_number ||
+    extractOrderFromMessage(message) ||
+    order_id ||
+    'N/A';
+
+  // If original message already looks well-formed, use it
+  if (message && (message.includes('"') || message.includes('#') || /[A-Z]{2,4}-\d+/.test(message))) {
+    return {
+      title: title || getDefaultTitle(type),
+      message: message,
+    };
+  }
+
   switch (type) {
-    case 'ORDER_DUE_24_HOURS':
-      return 'destructive';
-    case 'ORDER_DUE_7_DAYS':
-      return 'secondary';
-    case 'QUOTE_SELECTED':
-      return 'default';
     case 'ORDER_CREATED':
+      return {
+        title: 'New Order Available',
+        message: `A new order "${nOrder}" has been created and is available for quotation`,
+      };
+    case 'ORDER_CANCELLED':
+      return {
+        title: 'Order Cancelled',
+        message: `Order "${nOrder}" has been cancelled`,
+      };
+    case 'ORDER_DUE_7_DAYS':
+      return {
+        title: 'Order Closing in 7 Days',
+        message: `Order "${nOrder}" will close in 7 days`,
+      };
+    case 'ORDER_DUE_24_HOURS':
+      return {
+        title: 'Order Closing in 24 Hours',
+        message: `Order "${nOrder}" will close in 24 hours`,
+      };
     case 'QUOTE_RECEIVED':
-      return 'secondary';
+      return {
+        title: 'New Quote Received',
+        message: `New quote received for order "${nOrder}"`,
+      };
+    case 'QUOTE_CANCELLED':
+      return {
+        title: 'Quote Cancelled',
+        message: `Quote for order "${nOrder}" has been cancelled`,
+      };
+    case 'NEW_MESSAGE_EXPORTER':
+    case 'NEW_MESSAGE_FORWARDER':
+      return {
+        title: 'New Message',
+        message: `New message for order "${nOrder}"`,
+      };
+    case 'QUOTE_SELECTED':
+      return {
+        title: 'Quote Selected',
+        message: `Your quote for order "${nOrder}" has been selected`,
+      };
+    case 'ORDER_CLOSED':
+      return {
+        title: 'Order Closed',
+        message: `Order "${nOrder}" has been closed`,
+      };
     default:
-      return 'outline';
+      return {
+        title: title || 'Notification',
+        message: message || 'New notification received',
+      };
   }
 };
 
-const NotificationItem = ({ 
-  notification, 
-  onMarkAsRead, 
-  onDelete,
-  onClick 
-}) => {
+const getDefaultTitle = (type) => {
+  switch (type) {
+    case 'ORDER_CREATED':
+      return 'New Order Available';
+    case 'ORDER_CANCELLED':
+      return 'Order Cancelled';
+    case 'ORDER_DUE_7_DAYS':
+      return 'Order Closing in 7 Days';
+    case 'ORDER_DUE_24_HOURS':
+      return 'Order Closing in 24 Hours';
+    case 'QUOTE_RECEIVED':
+      return 'New Quote Received';
+    case 'QUOTE_CANCELLED':
+      return 'Quote Cancelled';
+    case 'NEW_MESSAGE_EXPORTER':
+    case 'NEW_MESSAGE_FORWARDER':
+      return 'New Message';
+    case 'QUOTE_SELECTED':
+      return 'Quote Selected';
+    case 'ORDER_CLOSED':
+      return 'Order Closed';
+    default:
+      return 'Notification';
+  }
+};
+
+// Helper: extract order reference from message text
+const extractOrderFromMessage = (message) => {
+  if (!message) return null;
+  const orderPatterns = [
+    /order\s+"([^"]+)"/i,
+    /order\s+([A-Z0-9-]+)/i,
+    /order\s+#(\d+)/i,
+    /#([A-Z0-9-]+)/i,
+    /([A-Z]{2,4}-\d+)/i,
+  ];
+  for (const pattern of orderPatterns) {
+    const match = message.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
+const NotificationItem = ({ notification, onMarkAsRead, onClick }) => {
+  const isReadByUser = notification.is_read_by_user;
+  const content = getNotificationContent(notification);
+
   const handleMarkAsRead = async (e) => {
     e.stopPropagation();
     try {
       await onMarkAsRead(notification.id);
-    } catch (error) {
+    } catch {
       toast.error('Failed to mark notification as read');
     }
   };
 
-  const handleDelete = async (e) => {
-    e.stopPropagation();
-    try {
-      await onDelete(notification.id);
-      toast.success('Notification deleted');
-    } catch (error) {
-      toast.error('Failed to delete notification');
-    }
-  };
-
-  const isUrgent = notification.type === 'ORDER_DUE_24_HOURS';
-  const isReadByUser = notification.is_read_by_user;
-  
   return (
-    <Card 
-      className={`cursor-pointer transition-colors hover:bg-accent/50 ${
-        !isReadByUser ? 'border-primary/20 bg-primary/5' : ''
-      } ${isUrgent ? 'border-destructive/30 bg-destructive/5' : ''}`}
+    <div
+      className={`group cursor-pointer relative rounded-lg px-1 py-2 transition-colors ${
+        isReadByUser
+          ? 'hover:bg-accent/50'
+          : 'bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/10 hover:ring-primary/20'
+      }`}
       onClick={() => onClick?.(notification)}
+      role="button"
+      tabIndex={0}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-full ${
-            isUrgent ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'
-          }`}>
+      {/* Top-right timestamp so message can use full width below */}
+      <div className="absolute top-3 right-2 text-xs text-muted-foreground">
+        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+      </div>
+
+      <div className="flex items-start gap-3">
+        <div className="shrink-0">
+          <div className="h-9 w-9 rounded-full bg-muted/60 dark:bg-muted/30 flex items-center justify-center text-foreground/80 ring-1 ring-border">
             <NotificationIcon type={notification.type} />
           </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <h4 className="font-medium text-sm leading-tight">
-                  {notification.title}
-                  {!isReadByUser && (
-                    <Badge className="ml-2 h-2 w-2 p-0 bg-primary" />
-                  )}
-                </h4>
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {notification.message}
-                </p>
-              </div>
-              
-              <Badge variant={NotificationBadgeColor({ type: notification.type })} className="text-xs shrink-0">
-                {notification.type.replace(/_/g, ' ').toLowerCase()}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>
-                  {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                </span>
-                {notification.read_count > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>{notification.read_count} read</span>
-                  </>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-1">
-                {!isReadByUser && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={handleMarkAsRead}
-                    title="Mark as read"
-                  >
-                    <Check className="w-3 h-3" />
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={handleDelete}
-                  title="Delete notification"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
+        </div>
+
+        <div className="w-full">
+          {/* Title row (reserve space so it doesn't overlap timestamp) */}
+          <div className="flex items-center gap-2 pr-16">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+            <h4 className="truncate font-medium text-sm leading-tight text-foreground">{content.title}</h4>
+            {!isReadByUser && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-primary/70" />}
+          </div>
+
+          {/* Plain message, no emphasis, full width under title */}
+          <p className="mt-2 text-xs text-muted-foreground break-words leading-relaxed">
+            {content.message}
+          </p>
+
+          <div className="mt-2 flex items-center justify-end gap-1">
+            {!isReadByUser && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:bg-primary/10 dark:hover:bg-primary/20"
+                onClick={handleMarkAsRead}
+                title="Mark as read"
+              >
+                <Check className="w-3 h-3" />
+              </Button>
+            )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
@@ -162,10 +225,30 @@ const NotificationPanel = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+  const [companyType, setCompanyType] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const fetchUserRole = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch('/api/me');
+      if (response.ok) {
+        const userData = await response.json();
+        const role = userData.role;
+        const companyType = userData.companyType;
+        setUserRole(role);
+        setCompanyType(companyType);
+        setIsAdmin(role === 'ADMIN');
+      }
+    } catch (error) {
+      console.error('Failed to fetch user role:', error);
+    }
+  }, [user?.id]);
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
-    
     setLoading(true);
     try {
       const response = await fetch('/api/notifications/company-wide?limit=50');
@@ -182,7 +265,6 @@ const NotificationPanel = () => {
 
   const fetchUnreadCount = useCallback(async () => {
     if (!user?.id) return;
-    
     try {
       const response = await fetch('/api/notifications/company-wide/unread');
       if (response.ok) {
@@ -197,87 +279,129 @@ const NotificationPanel = () => {
   const markAsRead = async (notificationId) => {
     try {
       const response = await fetch(`/api/notifications/company-wide/${notificationId}`, {
-        method: 'PATCH'
+        method: 'PATCH',
       });
-      
       if (response.ok) {
-        // Update the notification to show as read by current user
-        setNotifications(prev => 
-          prev.map(n => 
-            n.id === notificationId 
-              ? { ...n, is_read_by_user: true, read_count: n.read_count + 1 }
-              : n
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notificationId ? { ...n, is_read_by_user: true, read_count: (n.read_count || 0) + 1 } : n
           )
         );
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
       throw error;
     }
   };
 
-  const deleteNotification = async (notificationId) => {
+  const markAllAsRead = async () => {
+    setBulkLoading(true);
     try {
-      const response = await fetch(`/api/notifications/company-wide/${notificationId}`, {
-        method: 'DELETE'
+      const response = await fetch('/api/notifications/company-wide/mark-all-read', {
+        method: 'PATCH',
       });
-      
       if (response.ok) {
-        const notification = notifications.find(n => n.id === notificationId);
-        setNotifications(prev => prev.filter(n => n.id !== notificationId));
-        if (notification && !notification.is_read_by_user) {
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
+        const data = await response.json();
+        setNotifications((prev) =>
+          prev.map((n) => ({ ...n, is_read_by_user: true, read_count: (n.read_count || 0) + 1 }))
+        );
+        setUnreadCount(0);
+        toast.success(`Marked ${data.count} notifications as read`);
+      } else {
+        toast.error('Failed to mark all notifications as read');
       }
     } catch (error) {
-      throw error;
+      console.error('Failed to mark all as read:', error);
+      toast.error('Failed to mark all notifications as read');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const emptyNotifications = async () => {
+    if (!isAdmin) {
+      toast.error('Only company admins can empty notifications');
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const response = await fetch('/api/notifications/company-wide/empty', {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications([]);
+        setUnreadCount(0);
+        toast.success(`Deleted ${data.count} notifications`);
+      } else {
+        toast.error('Failed to empty notifications');
+      }
+    } catch (error) {
+      console.error('Failed to empty notifications:', error);
+      toast.error('Failed to empty notifications');
+    } finally {
+      setBulkLoading(false);
     }
   };
 
   const handleNotificationClick = (notification) => {
-    // Navigate to relevant page based on notification type
-    const { type, order_id, quote_id, message_id } = notification;
+    const { order_id, quote_id } = notification;
     
+    // For both order and quote notifications, redirect to the order page
+    // since quotes are displayed within order detail pages
     if (order_id) {
-      window.location.href = `/orders/${order_id}`;
-    } else if (quote_id) {
-      window.location.href = `/quotes/${quote_id}`;
+      // Route based on company type
+      let orderPath;
+      if (companyType === 'FREIGHT_FORWARDER') {
+        orderPath = `/forwarders/orders/${order_id}`;
+      } else if (companyType === 'EXPORTER') {
+        orderPath = `/orders/${order_id}`;
+      } else {
+        // Default fallback for other roles (admin, etc.)
+        orderPath = `/orders/${order_id}`;
+      }
+      window.location.href = orderPath;
+    } else if (quote_id && !order_id) {
+      // If we only have quote_id but no order_id (shouldn't happen based on the data structure)
+      // redirect to dashboard as fallback
+      if (companyType === 'FREIGHT_FORWARDER') {
+        window.location.href = '/forwarders/dashboard';
+      } else {
+        window.location.href = '/dashboard';
+      }
     }
     
-    // Mark as read when clicked
+    // Mark as read if not already read
     if (!notification.is_read_by_user) {
       markAsRead(notification.id);
     }
   };
 
-  // Initial load
   useEffect(() => {
     if (user?.id) {
-      fetchUnreadCount(); // Always fetch unread count
+      fetchUserRole();
+      fetchUnreadCount();
       if (isOpen) {
-        fetchNotifications(); // Only fetch all notifications when panel is open
+        fetchNotifications();
       }
     }
-  }, [user?.id, isOpen, fetchNotifications, fetchUnreadCount]);
+  }, [user?.id, isOpen, fetchNotifications, fetchUnreadCount, fetchUserRole]);
 
-  // Auto-refresh unread count every 30 seconds
   useEffect(() => {
     if (!user?.id) return;
-    
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [user?.id, fetchUnreadCount]);
 
-  // Refresh notifications when panel is opened
   useEffect(() => {
     if (isOpen && user?.id) {
       fetchNotifications();
     }
   }, [isOpen, user?.id, fetchNotifications]);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
+
+  const hasUnreadNotifications = notifications.some((n) => !n.is_read_by_user);
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -285,7 +409,7 @@ const NotificationPanel = () => {
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <Badge 
+            <Badge
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
               variant="destructive"
             >
@@ -294,69 +418,96 @@ const NotificationPanel = () => {
           )}
         </Button>
       </SheetTrigger>
-      
-      <SheetContent className="w-[400px] sm:w-[540px]">
+
+      <SheetContent className="w-[500px] sm:w-[540px] flex flex-col overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Company Notifications
+              Notifications
+              {unreadCount > 0 && <Badge variant="secondary">{unreadCount} unread</Badge>}
             </div>
-            {unreadCount > 0 && (
-              <Badge variant="secondary">
-                {unreadCount} unread
-              </Badge>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Refresh"
+              aria-label="Refresh notifications"
+              onClick={fetchNotifications}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
           </SheetTitle>
         </SheetHeader>
-        
-        <div className="mt-6">
+
+        <div className="mt-6 flex-1 flex flex-col min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="text-center py-8">
-              <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                No notifications
-              </h3>
-              <p className="text-sm text-muted-foreground">
+            <div className="text-center py-8 flex-1 flex flex-col items-center justify-center">
+              <div className="p-4 rounded-full bg-muted/50 dark:bg-muted/20 mb-4">
+                <Bell className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">No notifications</h3>
+              <p className="text-sm text-muted-foreground max-w-xs">
                 You&apos;re all caught up! New notifications will appear here.
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              <div className="space-y-4">
-                {notifications.map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onMarkAsRead={markAsRead}
-                    onDelete={deleteNotification}
-                    onClick={handleNotificationClick}
-                  />
+            <>
+              {/* Scroll the sheet body (no extra box), with separators between items */}
+              <div className="flex-1 overflow-y-auto px-2">
+                {notifications.map((notification, idx) => (
+                  <React.Fragment key={notification.id}>
+                    <NotificationItem
+                      notification={notification}
+                      onMarkAsRead={markAsRead}
+                      onClick={handleNotificationClick}
+                    />
+                    {idx < notifications.length - 1 && <Separator className="my-1.5" />}
+                  </React.Fragment>
                 ))}
               </div>
-            </ScrollArea>
+
+              {/* Footer: only two bulk actions */}
+              <div className="pt-4 mt-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={markAllAsRead}
+                    disabled={bulkLoading || !hasUnreadNotifications}
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <CheckCheck className="mr-2 h-4 w-4" />
+                    Mark All as Read
+                  </Button>
+
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={emptyNotifications}
+                      disabled={bulkLoading || notifications.length === 0}
+                      className="flex-1 border-destructive/30 text-destructive hover:text-destructive hover:bg-destructive/10 dark:hover:bg-destructive/20"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Empty Notifications
+                    </Button>
+                  )}
+                </div>
+
+                {bulkLoading && (
+                  <div className="mt-3 flex items-center justify-center py-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary"></div>
+                    <span className="ml-2 text-sm text-muted-foreground">Processing...</span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
-        
-        {notifications.length > 0 && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <span>{notifications.length} total notifications</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchNotifications}
-                disabled={loading}
-              >
-                Refresh
-              </Button>
-            </div>
-          </div>
-        )}
       </SheetContent>
     </Sheet>
   );
