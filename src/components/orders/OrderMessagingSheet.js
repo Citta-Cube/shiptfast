@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MessageSquare, Send, ArrowLeft, Building2, Users, Loader2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 
-const OrderMessagingSheet = ({ orderId, order, userRole }) => {
+const OrderMessagingSheet = ({ orderId, order, userRole, quotes }) => {
   const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -31,6 +31,22 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   const [isSending, setIsSending] = useState(false);
   const [companyConversations, setCompanyConversations] = useState([]);
   const [currentView, setCurrentView] = useState('companies'); // 'companies' or 'chat'
+
+  // Derived flags for permission logic
+  const orderStatus = String(order?.status || '').toUpperCase();
+  const isCancelled = orderStatus === 'CANCELLED';
+  const isClosed = orderStatus === 'CLOSED';
+  const isOpenOrPending = orderStatus === 'OPEN' || orderStatus === 'PENDING';
+  // Determine selected forwarder company id
+  const selectedForwarderCompanyId = (
+    order?.order_selected_forwarder?.freight_forwarder_id ||
+    (order?.selected_quote_id && Array.isArray(quotes)
+      ? quotes.find(q => q.id === order.selected_quote_id)?.freight_forwarder_id
+      : null)
+  ) || null;
+
+  const isBroadcastEnabled =
+    userRole === 'exporter' && !isCancelled && isOpenOrPending;
 
   const scrollAreaRef = useRef(null);
   const textareaRef = useRef(null);
@@ -201,6 +217,8 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
   }, [isOpen, currentView]);
 
   const sendToAllCompanies = async () => {
+    // Block broadcast based on order status rules
+    if (!isBroadcastEnabled) return;
     if (!messageText.trim()) return;
 
     try {
@@ -257,8 +275,23 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
     return conversation?.messages.length || 0;
   };
 
+  const canSendToSelectedCompany = (() => {
+    if (!selectedCompany) return false;
+    if (isCancelled) return false;
+    if (userRole === 'exporter') {
+      if (isClosed) {
+        return selectedCompany.id === selectedForwarderCompanyId;
+      }
+      // OPEN or PENDING
+      return true;
+    }
+    // Forwarders can send to exporter unless order is cancelled
+    return !isCancelled;
+  })();
+
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedCompany) return;
+    if (!canSendToSelectedCompany) return;
 
     try {
       setIsSending(true);
@@ -323,8 +356,15 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
         {userRole === 'exporter' && recipients.length > 1 && (
           <>
             <div
-              className="flex items-center p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-all hover:shadow-sm border border-transparent hover:border-border"
-              onClick={() => setCurrentView('broadcast')}
+              className={`flex items-center p-3 rounded-lg transition-all border ${
+                isBroadcastEnabled
+                  ? 'hover:bg-muted/50 cursor-pointer hover:shadow-sm border-transparent hover:border-border'
+                  : 'opacity-60 cursor-not-allowed bg-muted/30'
+              }`}
+              onClick={() => {
+                if (!isBroadcastEnabled) return;
+                setCurrentView('broadcast');
+              }}
             >
               <Avatar className="h-10 w-10 mr-3">
                 <AvatarFallback className="bg-primary text-primary-foreground">
@@ -333,7 +373,9 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
               </Avatar>
               <div className="flex-1">
                 <div className="font-medium">All Freight Forwarders</div>
-                <div className="text-sm text-muted-foreground">Send to all companies</div>
+                <div className="text-sm text-muted-foreground">
+                  {isBroadcastEnabled ? 'Send to all companies' : 'Broadcast disabled for this order'}
+                </div>
               </div>
               <Badge variant="secondary">{recipients.length}</Badge>
             </div>
@@ -417,7 +459,13 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
               ref={textareaRef}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              placeholder={`Type a message...`}
+              placeholder={
+                isCancelled
+                  ? 'Order is cancelled. Messaging disabled.'
+                  : userRole === 'exporter' && isClosed && selectedCompany?.id !== selectedForwarderCompanyId
+                  ? 'View only. You can only message the selected forwarder.'
+                  : 'Type a message...'
+              }
               className="flex-1 min-h-[60px] max-h-[120px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -425,11 +473,11 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
                   handleSendMessage();
                 }
               }}
-              disabled={isSending}
+              disabled={isSending || !canSendToSelectedCompany}
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!messageText.trim() || isSending}
+              disabled={!messageText.trim() || isSending || !canSendToSelectedCompany}
               size="sm"
               className="self-end h-[60px] w-[60px]"
             >
@@ -440,9 +488,19 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
               )}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Press Enter to send, Shift+Enter for new line, Esc to go back
-          </p>
+          <div className="text-xs text-muted-foreground mt-2">
+            {(!canSendToSelectedCompany) ? (
+              <span>
+                {isCancelled
+                  ? 'Order is cancelled. Messaging is disabled.'
+                  : userRole === 'exporter' && isClosed && selectedCompany?.id !== selectedForwarderCompanyId
+                  ? 'View-only: You can only message the selected freight forwarder for a closed order.'
+                  : ''}
+              </span>
+            ) : (
+              <span>Press Enter to send, Shift+Enter for new line, Esc to go back</span>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -579,7 +637,9 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
           <div className="flex-1">
             <div className="font-semibold">All Freight Forwarders</div>
             <div className="text-xs text-muted-foreground">
-              Broadcasting to {recipients.length} companies
+              {isBroadcastEnabled
+                ? `Broadcasting to ${recipients.length} companies`
+                : 'Broadcast disabled for this order'}
             </div>
           </div>
         </div>
@@ -591,7 +651,9 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
             </div>
             <p className="text-lg font-semibold mb-2">Broadcast Message</p>
             <p className="text-sm text-muted-foreground mb-4">
-              Your message will be sent to all {recipients.length} freight forwarders simultaneously
+              {isBroadcastEnabled
+                ? `Your message will be sent to all ${recipients.length} freight forwarders simultaneously`
+                : 'Broadcast is unavailable when the order is closed or cancelled.'}
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {recipients.slice(0, 5).map((r) => (
@@ -614,7 +676,7 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
               ref={textareaRef}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Type your broadcast message..."
+              placeholder={isBroadcastEnabled ? 'Type your broadcast message...' : 'Broadcast is disabled for this order'}
               className="flex-1 min-h-[60px] max-h-[120px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -622,11 +684,11 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
                   sendToAllCompanies();
                 }
               }}
-              disabled={isSending}
+              disabled={isSending || !isBroadcastEnabled}
             />
             <Button
               onClick={sendToAllCompanies}
-              disabled={!messageText.trim() || isSending}
+              disabled={!messageText.trim() || isSending || !isBroadcastEnabled}
               size="sm"
               className="self-end h-[60px] w-[60px]"
             >
@@ -638,7 +700,9 @@ const OrderMessagingSheet = ({ orderId, order, userRole }) => {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Press Enter to broadcast, Shift+Enter for new line, Esc to go back
+            {isBroadcastEnabled
+              ? 'Press Enter to broadcast, Shift+Enter for new line, Esc to go back'
+              : 'Broadcasting is not allowed for this order.'}
           </p>
         </div>
       </div>

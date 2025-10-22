@@ -78,6 +78,7 @@ const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
             orderId={currentOrder.id}
             order={currentOrder}
             userRole={userRole}
+            quotes={quotes}
           />
         </div>
       </div>
