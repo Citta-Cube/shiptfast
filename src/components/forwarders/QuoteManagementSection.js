@@ -294,7 +294,7 @@ const QuoteManagementSection = ({
                   <div className="flex items-center space-x-2">
                     {quote.status === 'ACTIVE' && (
                       <>
-                        {/* Edit Quote - Only available when order status is PENDING */}
+                        {/* Edit Quote - Only available when order status is OPEN */}
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -302,7 +302,7 @@ const QuoteManagementSection = ({
                             e.stopPropagation();
                             handleOpenDialog(quote);
                           }}
-                          disabled={orderStatus !== 'PENDING'}
+                          disabled={orderStatus !== 'OPEN'}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
