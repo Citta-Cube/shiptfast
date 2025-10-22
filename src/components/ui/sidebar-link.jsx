@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
-const SidebarLink = ({ item }) => {
-  const [isSubmenuOpen, setIsSubmenuOpen] = useState(false)
+const SidebarLink = ({ item, onNavigateStart }) => {
+  const alwaysOpen = item?.alwaysOpen === true
+  const [isSubmenuOpen, setIsSubmenuOpen] = useState(alwaysOpen)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   
@@ -51,17 +52,23 @@ const SidebarLink = ({ item }) => {
 
   // Auto-open submenu if it has an active child or if main item is active
   useEffect(() => {
+    if (alwaysOpen) {
+      setIsSubmenuOpen(true)
+      return
+    }
     if (hasActiveChild || isActive) {
       setIsSubmenuOpen(true)
     }
-  }, [hasActiveChild, isActive, pathname, searchParams])
+  }, [alwaysOpen, hasActiveChild, isActive, pathname, searchParams])
 
   const hasSubmenu = item.submenu && item.submenu.length > 0
 
   const toggleSubmenu = (e) => {
     if (hasSubmenu) {
       e.preventDefault()
-      setIsSubmenuOpen(!isSubmenuOpen)
+      if (!alwaysOpen) {
+        setIsSubmenuOpen(!isSubmenuOpen)
+      }
     }
   }
 
@@ -84,7 +91,11 @@ const SidebarLink = ({ item }) => {
     <div className="w-full">
       <Link
         href={hasSubmenu ? '#' : item.href}
-        onClick={toggleSubmenu}
+        onClick={(e) => {
+          if (hasSubmenu) return toggleSubmenu(e)
+          // Start navigation spinner for direct links
+          onNavigateStart && onNavigateStart()
+        }}
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-foreground",
           shouldHighlight 
@@ -124,6 +135,10 @@ const SidebarLink = ({ item }) => {
                   <Link
                     key={index}
                     href={subItem.href}
+                    onClick={() => {
+                      // Start navigation spinner for submenu links
+                      onNavigateStart && onNavigateStart()
+                    }}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:text-foreground",
                       isSubItemActive 

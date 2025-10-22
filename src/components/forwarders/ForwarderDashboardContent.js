@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Grid, List } from 'lucide-react';
@@ -13,6 +13,7 @@ import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
 const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState([]);
   console.log(orders);
@@ -116,6 +117,10 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
     if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
 
+    // Preserve current tab if present
+    const currentTab = searchParams?.get('tab');
+    if (currentTab) queryParams.set('tab', currentTab);
+
     const newUrl = queryParams.toString() ? `${pathname}?${queryParams.toString()}` : pathname;
     router.push(newUrl);
     router.refresh();
@@ -157,6 +162,7 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       <ForwarderOrderTabs
         orders={filteredOrders}
         viewMode={viewMode}
+        initialTab={(initialFilters.tab || initialFilters.status || 'all')}
       />
     );
   };

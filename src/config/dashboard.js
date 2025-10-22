@@ -13,6 +13,7 @@ export const exporterConfig = {
       title: "Dashboard",
       href: "/dashboard",
       icon: Home,
+      alwaysOpen: true,
       submenu: [
         {
           title: "Shipment Type",
@@ -74,28 +75,29 @@ export const forwarderConfig = {
       title: "Dashboard",
       href: "/forwarders/dashboard",
       icon: Home,
+      alwaysOpen: true,
       submenu: [
         {
           title: "Order Status",
           items: [
             {
               title: "Open Requests",
-              href: "/forwarders/dashboard?status=open",
+              href: "/forwarders/dashboard?tab=open",
               icon: Clock,
             },
             {
               title: "Pending Quotes",
-              href: "/forwarders/dashboard?status=pending",
+              href: "/forwarders/dashboard?tab=pending",
               icon: Clock,
             },
             {
               title: "Won Orders",
-              href: "/forwarders/dashboard?status=selected",
+              href: "/forwarders/dashboard?tab=selected",
               icon: Clock,
             },
             {
               title: "Rejected Quotes",
-              href: "/forwarders/dashboard?status=rejected",
+              href: "/forwarders/dashboard?tab=rejected",
               icon: Clock,
             },
           ]
@@ -122,11 +124,11 @@ export const forwarderConfig = {
       href: "/forwarders/analytics",
       icon: LineChart,
     },
-    {
-      title: "Order Management",
-      href: "/forwarders/orders",
-      icon: Package,
-    },
+    // {
+    //   title: "Order Management",
+    //   href: "/forwarders/orders",
+    //   icon: Package,
+    // },
     {
       title: "Exporters",
       href: "/forwarders/exporters",
