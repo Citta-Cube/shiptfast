@@ -1,9 +1,10 @@
 import { notFound } from 'next/navigation';
 import ForwarderOrderDetailContent from '@/components/forwarders/ForwarderOrderDetailContent';
-import { 
-  getForwarderOrderById, 
-  getForwarderQuotes, 
-  getOrderDocuments 
+import {
+  getForwarderOrderById,
+  getForwarderQuotes,
+  getOrderDocuments,
+  getQuoteDocuments
 } from '@/data-access/forwarder-orders';
 import { getCurrentUser } from '@/data-access/users';
 import { getUserCompanyMembership } from '@/data-access/companies'
@@ -21,11 +22,16 @@ export default async function ForwarderOrderPage({ params }) {
       getForwarderQuotes(params.id, forwarderId),
     ]);
 
+    // Find selected quote and fetch its documents
+    const selectedQuote = quotes?.find(q => q.status === 'SELECTED');
+    const quoteDocuments = selectedQuote ? await getQuoteDocuments(selectedQuote.id) : [];
+
     return (
-      <ForwarderOrderDetailContent 
+      <ForwarderOrderDetailContent
         order={order}
         documents={documents}
         quotes={quotes}
+        quoteDocuments={quoteDocuments}
       />
     );
   } catch (error) {

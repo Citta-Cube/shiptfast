@@ -65,4 +65,19 @@ export async function getForwarderQuotes(orderId, forwarderId) {
 }
 
 // Reuse the existing getOrderDocuments function from orders.js
-export { getOrderDocuments } from './orders'; 
+export { getOrderDocuments } from './orders';
+
+// Get documents for a specific quote
+export async function getQuoteDocuments(quoteId) {
+  const supabase = createClient();
+
+  const { data: documents, error } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('entity_type', 'ORDER_QUOTE')
+    .eq('entity_id', quoteId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return documents || [];
+} 

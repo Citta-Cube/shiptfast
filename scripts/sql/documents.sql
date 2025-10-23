@@ -1,4 +1,4 @@
-create type public.document_entity_type as enum ('ORDER', 'COMPANY');
+create type public.document_entity_type as enum ('ORDER', 'COMPANY', 'ORDER_QUOTE');
 
 create table
   public.documents (
@@ -34,6 +34,10 @@ begin
     when 'COMPANY' then
       if not exists (select 1 from public.companies where id = new.entity_id) then
         raise exception 'Invalid company_id for document';
+      end if;
+    when 'ORDER_QUOTE' then
+      if not exists (select 1 from public.quotes where id = new.entity_id) then
+        raise exception 'Invalid quote_id for document';
       end if;
     -- Add more cases as needed
   end case;
