@@ -99,6 +99,21 @@ export async function getOrderDocuments(orderId) {
   return data;
 }
 
+export async function getQuoteDocumentsByQuoteId(quoteId) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('documents')
+    .select(`
+      *
+    `)
+    .eq('entity_type', 'ORDER_QUOTE')
+    .eq('entity_id', quoteId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
 export async function getOrderQuotes(orderId) {
   try {
     const supabase = createClient();

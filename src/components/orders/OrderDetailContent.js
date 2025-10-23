@@ -20,7 +20,7 @@ const fetchHistoricalData = (startPort, endPort) => {
   });
 };
 
-const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
+const OrderDetailContent = ({ order, documents, quotes, userRole, quoteDocuments = [] }) => {
   const { user } = useUser();
   const [currentOrder, setCurrentOrder] = useState(order);
   const [historicalData, setHistoricalData] = useState(null);
@@ -92,10 +92,11 @@ const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
           canUpload={true}
           canDelete={true}
         />
-        <QuotationSection 
+        <QuotationSection
           order={order}
           quotes={quotes}
           onSelectAgent={handleSelectAgent}
+          quoteDocuments={quoteDocuments}
         />
         {/* <HistoricalPricingChart
           historicalData={historicalData}

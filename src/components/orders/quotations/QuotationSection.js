@@ -27,7 +27,7 @@ const EmptyState = () => (
   </div>
 );
 
-const QuotationSection = ({ order, quotes, onSelectAgent }) => {
+const QuotationSection = ({ order, quotes, onSelectAgent, quoteDocuments = [] }) => {
   const {
     sortedAndFilteredQuotations,
     sortBy,
@@ -37,13 +37,13 @@ const QuotationSection = ({ order, quotes, onSelectAgent }) => {
   } = useQuotations(quotes);
 
   const hasQuotes = quotes && quotes.length > 0;
-  
+
   // Find the selected quote
   const selectedQuote = quotes?.find(quote => quote.id === order.selected_quote_id);
-  
+
   // Filter out the selected quote from the list to avoid duplication
   const availableQuotes = quotes?.filter(quote => quote.id !== order.selected_quote_id) || [];
-  
+
   // Apply sorting and filtering to available quotes (excluding selected)
   const {
     sortedAndFilteredQuotations: filteredAvailableQuotes,
@@ -53,10 +53,14 @@ const QuotationSection = ({ order, quotes, onSelectAgent }) => {
     setFilterText: setAvailableFilterText
   } = useQuotations(availableQuotes);
 
-  return (  
+  return (
     <div className="col-span-2 space-y-6">
       {/* Selected Quote Section */}
-      <SelectedQuoteSection order={order} selectedQuote={selectedQuote} />
+      <SelectedQuoteSection
+        order={order}
+        selectedQuote={selectedQuote}
+        quoteDocuments={quoteDocuments}
+      />
       
       {/* Available Quotations Section */}
       <Card>

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, DollarSign, MapPin, Truck, Star, CalendarIcon, ArrowRightIcon, Ship, Plane } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, Clock, DollarSign, MapPin, Truck, Star, CalendarIcon, ArrowRightIcon, Ship, Plane, Receipt, FileText, Download } from "lucide-react";
 import { format } from 'date-fns';
 import RatingPopup from './RatingPopup';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTimeToReadable } from "@/lib/utils";
 
-const SelectedQuoteSection = ({ order, selectedQuote }) => {
+const SelectedQuoteSection = ({ order, selectedQuote, quoteDocuments = [] }) => {
   const [existingRating, setExistingRating] = useState(null);
   const [isCheckingRating, setIsCheckingRating] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -267,29 +268,29 @@ const SelectedQuoteSection = ({ order, selectedQuote }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Object.entries(selectedQuote.quote_details).map(([key, value]) => {
                   // Skip shipment-specific fields that are already displayed elsewhere
-                  if (["containerCount", "containerSize", "minimumCBM", "ratePerCBM", 
+                  if (["containerCount", "containerSize", "minimumCBM", "ratePerCBM",
                       "volumeWeight", "chargeableWeight"].includes(key)) {
                     return null;
                   }
-                  
+
                   if (!value) return null; // Only show non-empty values
-                  
+
                   let formattedValue = value;
-                  
+
                   // Add USD symbol for monetary values
-                  if (['DTHC', 'THC', 'FSC', 'SSC', 'demurrage', 'detention', 'AWBFee', 
-                      'handlingFee', 'screeningFee', 'pickupFee', 'deliveryFee', 
-                      'consolidationFee', 'deconsolidationFee', 'originHandling', 
+                  if (['DTHC', 'THC', 'FSC', 'SSC', 'demurrage', 'detention', 'AWBFee',
+                      'handlingFee', 'screeningFee', 'pickupFee', 'deliveryFee',
+                      'consolidationFee', 'deconsolidationFee', 'originHandling',
                       'destinationHandling'].includes(key) ||
                       key.toLowerCase().includes('fee')) {
                     formattedValue = `$${value}`;
                   }
-                  
+
                   // Add days for time-related fields
                   if (key.toLowerCase().includes('time')) {
                     formattedValue = `${value} days`;
                   }
-                  
+
                   return (
                     <div key={key} className="bg-background rounded-lg p-3">
                       <p className="text-sm text-muted-foreground">
@@ -299,6 +300,59 @@ const SelectedQuoteSection = ({ order, selectedQuote }) => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Invoice Documents Section */}
+          {quoteDocuments && quoteDocuments.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Receipt className="h-4 w-4" />
+                <h4 className="text-sm font-medium">Invoice Documents</h4>
+                <Badge variant="secondary" className="text-xs">
+                  {quoteDocuments.length}
+                </Badge>
+              </div>
+              <div className="bg-background rounded-lg divide-y divide-border">
+                {quoteDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-muted/5 transition-colors">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="text-sm font-medium truncate">{doc.title}</h5>
+                        {doc.description && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {doc.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                          <span className="text-xs text-muted-foreground inline-flex items-center">
+                            <span className="inline-block w-2 h-2 rounded-full bg-primary/50 mr-2"></span>
+                            Uploaded {formatDateTimeToReadable(doc.created_at, "short")}
+                          </span>
+                          {doc.metadata?.size && (
+                            <span className="text-xs text-muted-foreground inline-flex items-center">
+                              <span className="inline-block w-2 h-2 rounded-full bg-primary/50 mr-2"></span>
+                              {(doc.metadata.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => window.open(doc.file_url, '_blank')}
+                      className="ml-2"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
