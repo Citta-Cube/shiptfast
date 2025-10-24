@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import OrderList from '@/components/dashboard/OrderList';
 import OrderListView from '@/components/dashboard/OrderListView';
 import SearchAndFilter from '@/components/dashboard/SearchAndFilter';
+import Pagination from '@/components/ui/pagination';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Grid, List } from 'lucide-react';
@@ -11,9 +12,12 @@ import { Grid, List } from 'lucide-react';
 const DashboardContent = ({ initialFilters = {} }) => {
     const [orders, setOrders] = useState([]);
     const [filteredOrders, setFilteredOrders] = useState([]);
+    const [paginatedOrders, setPaginatedOrders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('grid');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 9;
     const [activeFilters, setActiveFilters] = useState({
         searchTerm: '',
         tradeType: initialFilters.tradeType || 'all',
@@ -149,8 +153,24 @@ const DashboardContent = ({ initialFilters = {} }) => {
         applyFilters();
     }, [orders, activeFilters, applyFilters]);
 
+    // Pagination logic
+    useEffect(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        setPaginatedOrders(filteredOrders.slice(startIndex, endIndex));
+    }, [filteredOrders, currentPage, itemsPerPage]);
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeFilters]);
+
     const handleFilterChange = (filterType, value) => {
         setActiveFilters(prev => ({ ...prev, [filterType]: value }));
+    };
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
     };
 
     const toggleViewMode = () => {
@@ -173,14 +193,25 @@ const DashboardContent = ({ initialFilters = {} }) => {
         }
 
         return viewMode === 'grid' 
-            ? <OrderList orders={filteredOrders} />
-            : <OrderListView orders={filteredOrders} />;
+            ? <OrderList orders={paginatedOrders} />
+            : <OrderListView orders={paginatedOrders} />;
     };
 
     return (
         <>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+                <div>
+                    <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+                    {!isLoading && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                            {filteredOrders.length > 0 ? (
+                                `Showing ${(currentPage - 1) * itemsPerPage + 1} to ${Math.min(currentPage * itemsPerPage, filteredOrders.length)} of ${filteredOrders.length} orders`
+                            ) : (
+                                'No orders found'
+                            )}
+                        </p>
+                    )}
+                </div>
                 <Button variant="outline" size="sm" onClick={toggleViewMode}>
                     {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
                     {viewMode === 'grid' ? 'List View' : 'Grid View'}
@@ -196,6 +227,15 @@ const DashboardContent = ({ initialFilters = {} }) => {
                 onSort={(value) => handleFilterChange('sortBy', value)}
             />
             {renderOrders()}
+            {filteredOrders.length > itemsPerPage && (
+                <div className="mt-8">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(filteredOrders.length / itemsPerPage)}
+                        onPageChange={handlePageChange}
+                    />
+                </div>
+            )}
         </>
     );
 };
