@@ -1,12 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import ForwarderOrderList from './ForwarderOrderList';
 
-const ForwarderOrderTabs = ({ orders, viewMode }) => {
-  const [activeTab, setActiveTab] = useState('all');
+// Valid tab keys for defensive checks
+const VALID_TABS = ['all', 'open', 'quoted', 'pending', 'rejected', 'selected'];
+
+const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Pick initial tab from props or URL (fallback supports legacy `status` param)
+  const derivedInitialTab = useMemo(() => {
+    const urlTab = searchParams?.get('tab') || searchParams?.get('status');
+    const candidate = (initialTab || urlTab || 'all').toLowerCase();
+    return VALID_TABS.includes(candidate) ? candidate : 'all';
+  }, [initialTab, searchParams]);
+
+  const [activeTab, setActiveTab] = useState(derivedInitialTab);
+
+  // Keep state in sync if URL changes externally (e.g., sidebar click)
+  useEffect(() => {
+    if (activeTab !== derivedInitialTab) {
+      setActiveTab(derivedInitialTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedInitialTab]);
   
   // Filter orders based on the active tab
   const getFilteredOrders = () => {
@@ -42,7 +65,17 @@ const ForwarderOrderTabs = ({ orders, viewMode }) => {
   };
 
   const handleTabChange = (value) => {
-    setActiveTab(value);
+    const next = VALID_TABS.includes(value) ? value : 'all';
+    setActiveTab(next);
+
+    // Preserve existing filters while updating the tab param
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('tab', next);
+    // Optional: drop legacy `status` if present
+    if (params.has('status')) params.delete('status');
+
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(nextUrl);
   };
 
   return (

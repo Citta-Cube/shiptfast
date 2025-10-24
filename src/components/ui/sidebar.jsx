@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
-import { Package2, Bell, LogOut } from 'lucide-react'
+import { Package2, Bell, LogOut, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exporterConfig, forwarderConfig } from '@/config/dashboard'
 import SidebarLink from '@/components/ui/sidebar-link'
@@ -12,8 +12,10 @@ import { cn } from '@/lib/utils'
 
 const Sidebar = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { signOut } = useClerk()
 
   // Select the appropriate config based on userType
@@ -24,6 +26,14 @@ const Sidebar = ({ userType = 'EXPORTER' }) => {
   
   // Check if we're on the dashboard page (for logo link highlighting)
   const isDashboardActive = pathname === dashboardHref || pathname.startsWith(dashboardHref + '?')
+
+  // Stop spinner when URL changes (path or query)
+  useEffect(() => {
+    if (isNavigating) {
+      setIsNavigating(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, searchParams])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -50,13 +60,16 @@ const Sidebar = ({ userType = 'EXPORTER' }) => {
           >
             <Package2 className="h-6 w-6" />
             <span className="">SHIPTFAST</span>
+            {isNavigating && (
+              <Loader2 className="ml-2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </Link>
         </div>
         
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4 mt-4">
             {config.sidebarNav.map((item, index) => (
-              <SidebarLink key={index} item={item} />
+              <SidebarLink key={index} item={item} onNavigateStart={() => setIsNavigating(true)} />
             ))}
           </nav>
         </div>

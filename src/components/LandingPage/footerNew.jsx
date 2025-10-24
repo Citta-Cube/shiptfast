@@ -45,7 +45,7 @@ export default function FooterSection() {
     }
 
     return (
-        <footer className="pt-16 pb-0 md:pt-32 md:pb-0 bg-background/80 backdrop-blur-sm">
+        <footer className="pt-4 pb-0 md:pt-4 md:pb-0 bg-background/80 backdrop-blur-sm">
             <div className="mx-auto max-w-5xl px-6 bg-transparent">
                 <Link href="/" aria-label="go home" className="mx-auto block size-fit">
                     <Logo />

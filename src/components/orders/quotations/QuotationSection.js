@@ -27,7 +27,7 @@ const EmptyState = () => (
   </div>
 );
 
-const QuotationSection = ({ order, quotes, onSelectAgent }) => {
+const QuotationSection = ({ order, quotes, onSelectAgent, userRole }) => {
   const {
     sortedAndFilteredQuotations,
     sortBy,
@@ -56,7 +56,7 @@ const QuotationSection = ({ order, quotes, onSelectAgent }) => {
   return (  
     <div className="col-span-2 space-y-6">
       {/* Selected Quote Section */}
-      <SelectedQuoteSection order={order} selectedQuote={selectedQuote} />
+  <SelectedQuoteSection order={order} selectedQuote={selectedQuote} userRole={userRole} />
       
       {/* Available Quotations Section */}
       <Card>
