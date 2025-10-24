@@ -11,6 +11,9 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
   const shipmentType = order?.shipment_type || 'SEA';
   const loadType = order?.load_type || 'FCL';
   
+  const selectedQuote = (quotes || []).find(q => q.id === order.selected_quote_id) || null;
+  const forwarderOwnsSelected = !!selectedQuote && selectedQuote.freight_forwarder_id === order.order_selected_forwarder.freight_forwarder_id;
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -40,6 +43,8 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
           canDelete={false}
         />
         
+        {/* Final Invoice controls are shown inside the selected quote area above */}
+
         {/* Quote Management Section - new interactive component */}
         <QuoteManagementSection 
           orderId={order.id}
@@ -50,6 +55,7 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
           originPort={order.origin_port}
           destinationPort={order.destination_port}
           orderStatus={order.status}
+          selectedQuoteId={order.selected_quote_id}
         />
       </div>
     </div>
