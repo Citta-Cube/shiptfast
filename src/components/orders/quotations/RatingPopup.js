@@ -32,8 +32,7 @@ const RatingPopup = ({ forwarderName, orderId, forwarderId, onRatingSubmitted })
       label: 'Pricing & Value',
       description: 'Did the service provide good value for the price you paid?'
     }
-  ];
-  
+  ]; 
 
   const handleStarClick = (category, rating) => {
     setRatings(prev => ({
