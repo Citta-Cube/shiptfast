@@ -1,17 +1,24 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, CheckCircle, Users, Package, ArrowRight } from 'lucide-react';
+import { Star, CheckCircle, Users, Package, ArrowRight, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Link from 'next/link';
 import { FreightServiceTags, FreightStatusIndicator } from "@/components/forwarders/FreightMetadata";
 
 const ForwarderCard = ({ forwarder }) => {
+  const [isLoading, setIsLoading] = useState(false);
   const defaultIcon = 'https://via.placeholder.com/160?text=' + forwarder.name.charAt(0);
+
+  const handleViewDetails = () => {
+    setIsLoading(true);
+    // The loading state will be reset when the page navigation occurs
+    // or component unmounts
+  };
 
   return (
     <Card className="h-full overflow-hidden transition-all duration-300 hover:shadow-lg">
@@ -69,9 +76,23 @@ const ForwarderCard = ({ forwarder }) => {
         />
         
         <Link href={`/forwarders/${forwarder.id}`} passHref>
-          <Button variant="default" className="w-full group">
-            View Details
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          <Button 
+            variant="default" 
+            className="w-full group min-w-[120px]"
+            onClick={handleViewDetails}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                View Details
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
           </Button>
         </Link>
       </CardContent>

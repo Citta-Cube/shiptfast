@@ -22,9 +22,12 @@ export async function GET(request) {
 
     let forwarders = await getForwardersByExporter(exporterId);
 
-    // Apply filters
+    // Filter out forwarders without relationships (inactive) and only show active ones
+    forwarders = forwarders.filter(ff => ff.relationship && ff.relationship.status === 'ACTIVE');
+
+    // Apply additional status filter if provided
     if (status && status !== 'null') {
-      forwarders = forwarders.filter(ff => ff.relationship.status === status);
+      forwarders = forwarders.filter(ff => ff.relationship && ff.relationship.status === status);
     }
 
     if (services && services !== 'null') {

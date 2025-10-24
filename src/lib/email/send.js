@@ -1,21 +1,30 @@
 import { getResend, getFromAddress, getAppUrl } from './resend'
-import * as T from './templates'
+// Explicitly import from the templates folder index to avoid
+// accidentally resolving the legacy templates.js file
+import * as T from './templates/index'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Resolve recipient: use only the company's email on public.companies
-async function getCompanyEmail(companyId) {
+// Resolve recipient: fetch company's email and type (EXPORTER or FREIGHT_FORWARDER)
+async function getCompanyInfo(companyId) {
   const admin = createAdminClient()
   const { data } = await admin
     .from('companies')
-    .select('email')
+    .select('email, type')
     .eq('id', companyId)
     .single()
-  return data?.email || null
+  if (!data) return null
+  return { email: data.email || null, type: data.type || null }
 }
 
-// Build a deep link to the app
-function orderLink(orderId) {
-  return `${getAppUrl()}/orders/${orderId}`
+// Build a deep link to the app, respecting recipient role
+function orderLink(orderId, companyType) {
+  const base = getAppUrl()
+  if (!orderId) return base
+  if (companyType === 'FREIGHT_FORWARDER') {
+    return `${base}/forwarders/orders/${orderId}`
+  }
+  // default to exporter/customer view
+  return `${base}/orders/${orderId}`
 }
 
 export async function sendEmailForNotification(n) {
@@ -23,12 +32,19 @@ export async function sendEmailForNotification(n) {
   const from = getFromAddress()
 
   // Identify recipients by recipient_company_id
-  const companyEmail = await getCompanyEmail(n.recipient_company_id)
+  const company = await getCompanyInfo(n.recipient_company_id)
+  const companyEmail = company?.email
+  const companyType = company?.type
   if (!companyEmail) return { skipped: true, reason: 'no-company-email' }
 
   // Craft subject and html per type
   const orderRef = n.data?.order_reference || n.data?.orderReference || n.data?.order || n.message?.match(/#?(\w[-\w]+)/)?.[0] || 'Order'
-  const url = n.order_id ? orderLink(n.order_id) : getAppUrl()
+  // Role-aware URL
+  const url = n.order_id
+    ? orderLink(n.order_id, companyType)
+    : companyType === 'FREIGHT_FORWARDER'
+      ? `${getAppUrl()}/forwarders/dashboard`
+      : `${getAppUrl()}/exporters/dashboard`
 
   let subject = n.title || 'Notification from ShipTfast'
   let html = `<p>${n.message}</p>`

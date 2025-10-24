@@ -78,6 +78,7 @@ const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
             orderId={currentOrder.id}
             order={currentOrder}
             userRole={userRole}
+            quotes={quotes}
           />
         </div>
       </div>
@@ -95,6 +96,7 @@ const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
           order={order}
           quotes={quotes}
           onSelectAgent={handleSelectAgent}
+          userRole={userRole}
         />
         {/* <HistoricalPricingChart
           historicalData={historicalData}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useClerk, useUser } from '@clerk/nextjs'
-import { Menu } from 'lucide-react'
+import { Menu, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { exporterConfig, forwarderConfig } from '@/config/dashboard'
@@ -16,6 +16,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [companyMembership, setCompanyMembership] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isNavigating, setIsNavigating] = useState(false)
   const router = useRouter()
   const { signOut } = useClerk()
   const { user, isLoaded } = useUser()
@@ -93,6 +94,12 @@ const Header = ({ userType = 'EXPORTER' }) => {
     router.push('/profile?tab=personal')
   }
 
+  const handleNavigation = (href) => {
+    setIsNavigating(true)
+    router.push(href)
+    // The loading state will be reset when navigation completes or component unmounts
+  }
+
   // Get user's first name and last name
   const firstName = user?.firstName || companyMembership?.first_name || ''
   const lastName = user?.lastName || companyMembership?.last_name || ''
@@ -139,11 +146,18 @@ const Header = ({ userType = 'EXPORTER' }) => {
             return (
               <Button
                 key={index}
-                onClick={() => router.push(item.href)}
-                className="text-sm font-medium"
-                disabled={item.disabled}
+                onClick={() => handleNavigation(item.href)}
+                className="text-sm font-medium min-w-[120px]"
+                disabled={item.disabled || isNavigating}
               >
-                {item.title}
+                {isNavigating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  item.title
+                )}
               </Button>
             )
           }

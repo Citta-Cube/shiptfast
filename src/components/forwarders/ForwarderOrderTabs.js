@@ -1,26 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import ForwarderOrderList from './ForwarderOrderList';
 
-const VALID_TABS = new Set(['all','open','quoted','pending','rejected','selected']);
+// Valid tab keys for defensive checks
+const VALID_TABS = ['all', 'open', 'quoted', 'pending', 'rejected', 'selected'];
 
-const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusChange }) => {
-  const getInitialTab = () => {
-    const normalized = String(statusParam || 'all').toLowerCase();
-    return VALID_TABS.has(normalized) ? normalized : 'all';
-  };
+const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState(getInitialTab());
+  // Pick initial tab from props or URL (fallback supports legacy `status` param)
+  const derivedInitialTab = useMemo(() => {
+    const urlTab = searchParams?.get('tab') || searchParams?.get('status');
+    const candidate = (initialTab || urlTab || 'all').toLowerCase();
+    return VALID_TABS.includes(candidate) ? candidate : 'all';
+  }, [initialTab, searchParams]);
 
-  // Keep local active tab in sync with URL/status param
+  const [activeTab, setActiveTab] = useState(derivedInitialTab);
+
+  // Keep state in sync if URL changes externally (e.g., sidebar click)
   useEffect(() => {
-    const normalized = String(statusParam || 'all').toLowerCase();
-    const next = VALID_TABS.has(normalized) ? normalized : 'all';
-    setActiveTab(next);
-  }, [statusParam]);
+    if (activeTab !== derivedInitialTab) {
+      setActiveTab(derivedInitialTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedInitialTab]);
   
   // Filter orders based on the active tab
   const getFilteredOrders = () => {
@@ -37,7 +46,8 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
         case 'rejected':
           return order.quote_status === 'rejected';
         case 'selected':
-          return order.quote_status === 'selected';
+          // Check if quote exists and its status is SELECTED
+          return order.quote && order.quote.status === 'SELECTED';
         default:
           return true;
       }
@@ -51,15 +61,21 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
     quoted: orders.filter(order => order.quote_status === 'quoted').length,
     pending: orders.filter(order => order.quote_status === 'pending').length,
     rejected: orders.filter(order => order.quote_status === 'rejected').length,
-    selected: orders.filter(order => order.quote_status === 'selected').length
+    selected: orders.filter(order => order.quote && order.quote.status === 'SELECTED').length
   };
 
   const handleTabChange = (value) => {
-    const normalized = String(value || 'all').toLowerCase();
-    setActiveTab(normalized);
-    if (typeof onStatusChange === 'function') {
-      onStatusChange(normalized);
-    }
+    const next = VALID_TABS.includes(value) ? value : 'all';
+    setActiveTab(next);
+
+    // Preserve existing filters while updating the tab param
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('tab', next);
+    // Optional: drop legacy `status` if present
+    if (params.has('status')) params.delete('status');
+
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(nextUrl);
   };
 
   return (
@@ -112,4 +128,4 @@ const ForwarderOrderTabs = ({ orders, viewMode, statusParam = 'all', onStatusCha
   );
 };
 
-export default ForwarderOrderTabs; 
+export default ForwarderOrderTabs;

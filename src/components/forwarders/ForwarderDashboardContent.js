@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Grid, List } from 'lucide-react';
@@ -13,8 +13,10 @@ import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
 const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState([]);
+  console.log(orders);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -23,7 +25,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     searchTerm: '',
     shipmentType: initialFilters.shipmentType || 'all',
     loadType: initialFilters.loadType || 'all',
-    status: initialFilters.status || 'all',
     sortBy: initialFilters.sortBy || 'shipmentDate'
   });
 
@@ -73,12 +74,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       result = result.filter(order => String(order.load_type || '').toLowerCase() === lt);
     }
 
-    // Apply status filter
-    if (activeFilters.status !== 'all') {
-      const status = String(activeFilters.status || '').toLowerCase();
-      result = result.filter(order => String(order.status || '').toLowerCase() === status);
-    }
-
     // Apply sorting
     if (activeFilters.sortBy) {
       if (activeFilters.sortBy === 'shipmentDate') {
@@ -112,7 +107,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       ...prev,
       shipmentType: initialFilters.shipmentType || 'all',
       loadType: initialFilters.loadType || 'all',
-      status: initialFilters.status || 'all',
       sortBy: initialFilters.sortBy || 'shipmentDate'
     }));
   }, [initialFilters]);
@@ -121,8 +115,11 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     const queryParams = new URLSearchParams();
     if ((nextFilters.shipmentType || 'all') !== 'all') queryParams.set('shipmentType', nextFilters.shipmentType);
     if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
-    if ((nextFilters.status || 'all') !== 'all') queryParams.set('status', nextFilters.status);
     if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
+
+    // Preserve current tab if present
+    const currentTab = searchParams?.get('tab');
+    if (currentTab) queryParams.set('tab', currentTab);
 
     const newUrl = queryParams.toString() ? `${pathname}?${queryParams.toString()}` : pathname;
     router.push(newUrl);
@@ -165,32 +162,30 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       <ForwarderOrderTabs
         orders={filteredOrders}
         viewMode={viewMode}
-        statusParam={activeFilters.status}
-        onStatusChange={(value) => handleFilterChange('status', value)}
+        initialTab={(initialFilters.tab || initialFilters.status || 'all')}
       />
     );
   };
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-6">Freight Forwarder Dashboard</h1>
-
-      <ForwarderMetrics />
-
-      <div className="flex justify-between items-center my-6">
-        <h2 className="text-xl font-semibold">Order Management</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Orders Dashboard</h1>
         <Button variant="outline" size="sm" onClick={toggleViewMode}>
           {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
           {viewMode === 'grid' ? 'List View' : 'Grid View'}
         </Button>
       </div>
 
+      <ForwarderMetrics />
+
+      <div className="my-6" />
+
       <ForwarderSearchAndFilter
         activeFilters={activeFilters}
         onSearch={(value) => handleFilterChange('searchTerm', value)}
         onFilterShipmentType={(value) => handleFilterChange('shipmentType', value)}
         onFilterLoadType={(value) => handleFilterChange('loadType', value)}
-        onFilterStatus={(value) => handleFilterChange('status', value)}
         onSort={(value) => handleFilterChange('sortBy', value)}
       />
 

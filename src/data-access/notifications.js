@@ -65,13 +65,14 @@ export async function createNotification({
 /**
  * Get notifications for a user in their company
  * Shows both read and unread notifications with user-specific read status
+ * Enhanced to include company names and order reference numbers
  */
 export async function getUserNotifications(userId, companyId, limit = 50) {
   const supabase = createClient();
   
   try {
-    // Use the SQL function to get notifications with user-specific read status
-    const { data, error } = await supabase
+    // Get notifications with basic data
+    const { data: notifications, error } = await supabase
       .rpc('get_user_company_notifications', {
         user_id: userId,
         company_id: companyId,
@@ -83,7 +84,50 @@ export async function getUserNotifications(userId, companyId, limit = 50) {
       throw error;
     }
 
-    return data || [];
+    if (!notifications || notifications.length === 0) {
+      return [];
+    }
+
+    // Enhance notifications with company names and order reference numbers
+    const enhancedNotifications = await Promise.all(
+      notifications.map(async (notification) => {
+        let senderCompanyName = null;
+        let orderReferenceNumber = null;
+        
+        try {
+          // Fetch sender company name if available
+          if (notification.sender_company_id) {
+            const { data: company } = await supabase
+              .from('companies')
+              .select('name')
+              .eq('id', notification.sender_company_id)
+              .single();
+            senderCompanyName = company?.name;
+          }
+          
+          // Fetch order reference number if available
+          if (notification.order_id) {
+            const { data: order } = await supabase
+              .from('orders')
+              .select('reference_number')
+              .eq('id', notification.order_id)
+              .single();
+            orderReferenceNumber = order?.reference_number;
+          }
+        } catch (err) {
+          // Don't fail the whole request if we can't fetch additional data
+          console.warn('Failed to fetch additional notification data:', err);
+        }
+        
+        return {
+          ...notification,
+          sender_company_name: senderCompanyName,
+          order_reference_number: orderReferenceNumber
+        };
+      })
+    );
+
+    return enhancedNotifications;
   } catch (error) {
     console.error('Failed to get user notifications:', error);
     throw error;

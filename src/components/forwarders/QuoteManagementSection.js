@@ -14,6 +14,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Ship, Plane } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import FinalInvoiceControls from '@/components/orders/FinalInvoiceControls';
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const QuoteManagementSection = ({ 
   orderId, 
@@ -22,24 +26,32 @@ const QuoteManagementSection = ({
   shipmentType, 
   loadType,
   originPort,
-  destinationPort 
+  destinationPort,
+  orderStatus,
+  selectedQuoteId
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedQuoteId, setExpandedQuoteId] = useState(null);
   const [openQuoteId, setOpenQuoteId] = useState(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [priceEditError, setPriceEditError] = useState('');
   
   // Sort quotes by creation date (newest first)
   const sortedQuotes = [...quotes].sort((a, b) => 
     new Date(b.created_at) - new Date(a.created_at)
   );
   
-  // Allow multiple quotes: always allow submitting a new quote
-  const canSubmitNewQuote = true;
+  // Business Logic: New quotes can only be submitted when order status is OPEN
+  const canSubmitNewQuote = orderStatus === 'OPEN';
   
   const handleOpenDialog = (quote = null) => {
     setSelectedQuote(quote);
+    if (quote) {
+      setEditPrice(quote.net_freight_cost.toString());
+      setPriceEditError('');
+    }
     setDialogOpen(true);
   };
   
@@ -52,9 +64,9 @@ const QuoteManagementSection = ({
           'Content-Type': 'application/json',
         }
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         toast.success('Quote cancelled successfully', {
           description: 'Your quote has been cancelled.'
@@ -67,6 +79,66 @@ const QuoteManagementSection = ({
       }
     } catch (error) {
       toast.error('Failed to cancel quote', {
+        description: 'An unexpected error occurred.'
+      });
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePriceUpdate = async () => {
+    // Validate price
+    if (!editPrice || isNaN(editPrice) || parseFloat(editPrice) <= 0) {
+      setPriceEditError('Please enter a valid price greater than 0');
+      return;
+    }
+
+    const newPrice = parseFloat(editPrice);
+    if (newPrice === selectedQuote.net_freight_cost) {
+      setPriceEditError('New price must be different from current price');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/forwarders/quotes/${selectedQuote.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId,
+          forwarderId,
+          netFreightCost: newPrice,
+          estimatedTimeDays: selectedQuote.estimated_time_days,
+          validityPeriodDays: selectedQuote.validity_period_days,
+          notes: selectedQuote.note || '',
+          quoteDetails: selectedQuote.quote_details || {},
+          transshipmentPorts: selectedQuote.transshipment_ports?.map((tp, index) => ({
+            port_id: tp.port_id,
+            sequence_number: tp.sequence_number || index + 1
+          })) || []
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success('Quote price updated successfully', {
+          description: 'The net freight cost has been updated.'
+        });
+        setDialogOpen(false);
+        setSelectedQuote(null);
+        setEditPrice('');
+        setPriceEditError('');
+      } else {
+        toast.error('Failed to update quote', {
+          description: data.error || 'An error occurred while updating the quote.'
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to update quote', {
         description: 'An unexpected error occurred.'
       });
       console.error(error);
@@ -258,9 +330,14 @@ const QuoteManagementSection = ({
             <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Quotes Submitted</h3>
             <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              You haven&apos;t submitted any quotes for this order yet.
+              {orderStatus !== 'OPEN' 
+                ? `Cannot submit quotes when order status is ${orderStatus}. Quotes can only be submitted when the order is OPEN.`
+                : "You haven't submitted any quotes for this order yet."
+              }
             </p>
-            <Button onClick={() => handleOpenDialog()}>Submit Quote</Button>
+            {canSubmitNewQuote && (
+              <Button onClick={() => handleOpenDialog()}>Submit Quote</Button>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
@@ -288,6 +365,7 @@ const QuoteManagementSection = ({
                   <div className="flex items-center space-x-2">
                     {quote.status === 'ACTIVE' && (
                       <>
+                        {/* Edit Quote - Only available when order status is OPEN */}
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -295,17 +373,20 @@ const QuoteManagementSection = ({
                             e.stopPropagation();
                             handleOpenDialog(quote);
                           }}
+                          disabled={orderStatus !== 'OPEN'}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
                         
+                        {/* Cancel Quote - Only available when order status is OPEN */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
                               variant="destructive" 
                               size="sm"
                               onClick={(e) => e.stopPropagation()}
+                              disabled={orderStatus !== 'OPEN'}
                             >
                               <XCircle className="h-4 w-4 mr-2" />
                               Cancel
@@ -346,6 +427,18 @@ const QuoteManagementSection = ({
                 
                 <CollapsibleContent>
                   <div className="p-4 border-t bg-muted/30 space-y-6">
+                    {/* Final Invoice Controls - shown when this is the selected quote */}
+                    {quote.id === selectedQuoteId && (
+                      <div>
+                        <FinalInvoiceControls 
+                          order={{ id: orderId, selected_quote_id: selectedQuoteId }} 
+                          selectedQuote={quote} 
+                          userRole="forwarder" 
+                          forwarderCompanyOwnsSelected={true}
+                        />
+                      </div>
+                    )}
+
                     {/* Basic Quote Details */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div>
@@ -433,33 +526,88 @@ const QuoteManagementSection = ({
       </CardContent>
       
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className={selectedQuote ? "sm:max-w-[500px]" : "sm:max-w-[700px] max-h-[90vh] overflow-y-auto"}>
           <DialogHeader>
-            <DialogTitle>{selectedQuote ? 'Update Quote' : 'New Quote'}</DialogTitle>
+            <DialogTitle>{selectedQuote ? 'Update Quote Price' : 'New Quote'}</DialogTitle>
             <DialogDescription>
-              {selectedQuote 
-                ? 'Edit your existing quote. Only price changes will be tracked in amendments.' 
+              {selectedQuote
+                ? 'You can only update the net freight cost. To change other details, please cancel this quote and submit a new one.'
                 : 'Submit a new quote for this order.'}
             </DialogDescription>
           </DialogHeader>
-          
-          <QuoteForm
-            orderId={orderId}
-            forwarderId={forwarderId}
-            existingQuote={selectedQuote}
-            shipmentType={shipmentType}
-            loadType={loadType}
-            originPort={originPort}
-            destinationPort={destinationPort}
-            onSuccess={() => {
-              setDialogOpen(false);
-              toast.success(selectedQuote ? 'Quote updated successfully' : 'Quote submitted successfully', {
-                description: selectedQuote 
-                  ? 'Your quote has been updated.'
-                  : 'Your quote has been submitted and is now active.'
-              });
-            }}
-          />
+
+          {selectedQuote ? (
+            // Price edit form for existing quotes
+            <div className="space-y-4">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Only the net freight cost can be modified. All other quote details (delivery time, validity, route, etc.) cannot be changed. If you need to modify other details, please cancel this quote and submit a new one.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-2">
+                <Label htmlFor="editPrice">Net Freight Cost (USD)*</Label>
+                <Input
+                  id="editPrice"
+                  type="number"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  value={editPrice}
+                  onChange={(e) => {
+                    setEditPrice(e.target.value);
+                    setPriceEditError('');
+                  }}
+                  className={priceEditError ? 'border-destructive' : ''}
+                />
+                {priceEditError && (
+                  <p className="text-destructive text-sm">{priceEditError}</p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Current price: ${selectedQuote.net_freight_cost.toLocaleString()}
+                </p>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setSelectedQuote(null);
+                    setEditPrice('');
+                    setPriceEditError('');
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePriceUpdate}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Updating...' : 'Update Price'}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            // Full quote form for new quotes
+            <QuoteForm
+              orderId={orderId}
+              forwarderId={forwarderId}
+              existingQuote={null}
+              shipmentType={shipmentType}
+              loadType={loadType}
+              originPort={originPort}
+              destinationPort={destinationPort}
+              onSuccess={() => {
+                setDialogOpen(false);
+                toast.success('Quote submitted successfully', {
+                  description: 'Your quote has been submitted and is now active.'
+                });
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </Card>
