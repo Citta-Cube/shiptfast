@@ -37,7 +37,7 @@ export async function POST(request, { params }) {
     }
 
     // Validate rating categories
-    const requiredCategories = ['service_quality', 'on_time_delivery', 'reliability'];
+    const requiredCategories = ['communication_and_responsiveness', 'reliability_and_delivery_performance', 'pricing_and_value'];
     const hasAllCategories = requiredCategories.every(category => 
       ratingCategories.hasOwnProperty(category) && 
       ratingCategories[category] >= 1 && 
@@ -127,6 +127,25 @@ export async function POST(request, { params }) {
       );
     }
 
+    // Check if rating already exists for this order
+    const { data: realUserId, error: realUserIdError } = await supabase
+      .from('company_members')
+      .select('id')
+      .eq('user_id', userId)
+      .single();
+  
+      if (realUserIdError) {
+        return NextResponse.json(
+          { error: 'This User does not exists' },
+          { status: 400 }
+        );
+    }
+
+    const average =
+      (ratingCategories.communication_and_responsiveness +
+      ratingCategories.reliability_and_delivery_performance +
+      ratingCategories.pricing_and_value) / 3;
+
     // Insert the rating
     const { data: ratingData, error: insertError } = await supabase
       .from('company_ratings')
@@ -135,8 +154,9 @@ export async function POST(request, { params }) {
         rater_company_id: raterCompanyId,
         ratee_company_id: forwarderId,
         rating_categories: ratingCategories,
+        // average_score: average,
         comment: comment,
-        created_by: userId
+        created_by: realUserId.id
       })
       .select()
       .single();
