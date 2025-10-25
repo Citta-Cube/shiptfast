@@ -25,6 +25,8 @@ const NewOrderPage = () => {
     cargoReadyDate: null,
     quotationDeadline: null,
     isUrgent: false,
+    note: '',
+    noteIsImportant: false,
     originPort: '',
     destinationPort: '',
     grossWeight: '',
@@ -111,6 +113,8 @@ const NewOrderPage = () => {
         cargo_ready_date: orderData.cargoReadyDate,
         quotation_deadline: orderData.quotationDeadline,
         is_urgent: orderData.isUrgent || false,
+        note: orderData.note || null,
+        note_is_important: orderData.noteIsImportant || false,
         origin_port_id: orderData.originPort,
         destination_port_id: orderData.destinationPort,
         order_details: orderDetails

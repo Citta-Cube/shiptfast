@@ -47,6 +47,8 @@ export async function createOrder(orderData, selectedForwarderIds, documents = [
         cargo_ready_date: orderData.cargo_ready_date,
         quotation_deadline: orderData.quotation_deadline,
         is_urgent: orderData.is_urgent,
+        note: orderData.note || null,
+        note_is_important: orderData.note_is_important || false,
         origin_port_id: orderData.origin_port_id,
         destination_port_id: orderData.destination_port_id,
         order_details: orderData.order_details
