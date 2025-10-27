@@ -8,7 +8,13 @@ import Pagination from '@/components/ui/pagination';
 import ForwarderOrderList from './ForwarderOrderList';
 
 const ForwarderOrderTabs = ({ orders, viewMode, currentPage, itemsPerPage, onPageChange }) => {
-  const [activeTab, setActiveTab] = useState('all');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Initialize active tab from URL or default to 'all'
+  const initialTab = searchParams?.get('tab') || 'all';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [paginatedOrders, setPaginatedOrders] = useState([]);
   
   // Filter orders based on the active tab
@@ -44,18 +50,41 @@ const ForwarderOrderTabs = ({ orders, viewMode, currentPage, itemsPerPage, onPag
     selected: orders.filter(order => order.quote && order.quote.status === 'SELECTED').length
   };
 
+  // Sync active tab with URL parameter
+  useEffect(() => {
+    const tabFromUrl = searchParams?.get('tab');
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Pagination logic for current tab
   useEffect(() => {
     const filteredOrders = getFilteredOrders();
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     setPaginatedOrders(filteredOrders.slice(startIndex, endIndex));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentPage, itemsPerPage, orders]);
 
   const handleTabChange = (value) => {
     setActiveTab(value);
     // Reset to page 1 when changing tabs
     onPageChange(1);
+    
+    // Update URL with the new tab parameter
+    const currentParams = new URLSearchParams(searchParams?.toString());
+    if (value === 'all') {
+      // Remove tab parameter for 'all' tab
+      currentParams.delete('tab');
+    } else {
+      currentParams.set('tab', value);
+    }
+    
+    const queryString = currentParams.toString();
+    const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    router.push(newUrl, { scroll: false });
   };
 
   return (
