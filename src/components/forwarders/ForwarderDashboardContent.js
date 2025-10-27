@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Grid, List } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import Pagination from '@/components/ui/pagination';
 import ForwarderMetrics from '@/components/forwarders/ForwarderMetrics';
 import ForwarderSearchAndFilter from '@/components/forwarders/ForwarderSearchAndFilter';
 import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
@@ -21,6 +22,8 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
   const [activeFilters, setActiveFilters] = useState({
     searchTerm: '',
     shipmentType: initialFilters.shipmentType || 'all',
@@ -101,6 +104,11 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     applyFilters();
   }, [applyFilters]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilters]);
+
   // Sync internal state when URL search params (via props) change
   useEffect(() => {
     setActiveFilters(prev => ({
@@ -134,6 +142,10 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     });
   };
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   const toggleViewMode = () => {
     setViewMode(prevMode => prevMode === 'grid' ? 'list' : 'grid');
   };
@@ -162,7 +174,9 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       <ForwarderOrderTabs
         orders={filteredOrders}
         viewMode={viewMode}
-        initialTab={(initialFilters.tab || initialFilters.status || 'all')}
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
       />
     );
   };
@@ -170,7 +184,18 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+          {!isLoading && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredOrders.length > 0 ? (
+                `${filteredOrders.length} orders available`
+              ) : (
+                'No orders found'
+              )}
+            </p>
+          )}
+        </div>
         <Button variant="outline" size="sm" onClick={toggleViewMode}>
           {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
           {viewMode === 'grid' ? 'List View' : 'Grid View'}

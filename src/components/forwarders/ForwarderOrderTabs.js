@@ -4,32 +4,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import Pagination from '@/components/ui/pagination';
 import ForwarderOrderList from './ForwarderOrderList';
 
-// Valid tab keys for defensive checks
-const VALID_TABS = ['all', 'open', 'quoted', 'pending', 'rejected', 'selected'];
-
-const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  // Pick initial tab from props or URL (fallback supports legacy `status` param)
-  const derivedInitialTab = useMemo(() => {
-    const urlTab = searchParams?.get('tab') || searchParams?.get('status');
-    const candidate = (initialTab || urlTab || 'all').toLowerCase();
-    return VALID_TABS.includes(candidate) ? candidate : 'all';
-  }, [initialTab, searchParams]);
-
-  const [activeTab, setActiveTab] = useState(derivedInitialTab);
-
-  // Keep state in sync if URL changes externally (e.g., sidebar click)
-  useEffect(() => {
-    if (activeTab !== derivedInitialTab) {
-      setActiveTab(derivedInitialTab);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [derivedInitialTab]);
+const ForwarderOrderTabs = ({ orders, viewMode, currentPage, itemsPerPage, onPageChange }) => {
+  const [activeTab, setActiveTab] = useState('all');
+  const [paginatedOrders, setPaginatedOrders] = useState([]);
   
   // Filter orders based on the active tab
   const getFilteredOrders = () => {
@@ -64,18 +44,18 @@ const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
     selected: orders.filter(order => order.quote && order.quote.status === 'SELECTED').length
   };
 
+  // Pagination logic for current tab
+  useEffect(() => {
+    const filteredOrders = getFilteredOrders();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPaginatedOrders(filteredOrders.slice(startIndex, endIndex));
+  }, [activeTab, currentPage, itemsPerPage, orders]);
+
   const handleTabChange = (value) => {
-    const next = VALID_TABS.includes(value) ? value : 'all';
-    setActiveTab(next);
-
-    // Preserve existing filters while updating the tab param
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('tab', next);
-    // Optional: drop legacy `status` if present
-    if (params.has('status')) params.delete('status');
-
-    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
-    router.push(nextUrl);
+    setActiveTab(value);
+    // Reset to page 1 when changing tabs
+    onPageChange(1);
   };
 
   return (
@@ -102,27 +82,81 @@ const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
       </TabsList>
       
       <TabsContent value="all" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+        {getFilteredOrders().length > itemsPerPage && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(getFilteredOrders().length / itemsPerPage)}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </TabsContent>
       
       <TabsContent value="open" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+        {getFilteredOrders().length > itemsPerPage && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(getFilteredOrders().length / itemsPerPage)}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </TabsContent>
       
       <TabsContent value="quoted" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+        {getFilteredOrders().length > itemsPerPage && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(getFilteredOrders().length / itemsPerPage)}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </TabsContent>
       
       <TabsContent value="pending" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+        {getFilteredOrders().length > itemsPerPage && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(getFilteredOrders().length / itemsPerPage)}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </TabsContent>
       
       <TabsContent value="rejected" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+        {getFilteredOrders().length > itemsPerPage && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(getFilteredOrders().length / itemsPerPage)}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="selected" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+        {getFilteredOrders().length > itemsPerPage && (
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(getFilteredOrders().length / itemsPerPage)}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );
