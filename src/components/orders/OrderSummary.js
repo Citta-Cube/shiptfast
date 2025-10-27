@@ -162,6 +162,23 @@ const OrderSummary = ({ order }) => {
           <p className="text-sm font-medium">Incoterm</p>
           <p className="text-sm font-small text-muted-foreground">{order.incoterm}</p>
         </div>
+        {order.note && (
+          <div className={`col-span-2 ${order.note_is_important ? 'bg-amber-50 border border-amber-200 p-3 rounded-lg' : ''}`}>
+            <div className="flex items-start gap-2">
+              {order.note_is_important && (
+                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${order.note_is_important ? 'text-amber-900' : ''}`}>
+                  {order.note_is_important ? 'Important Note' : 'Order Note'}
+                </p>
+                <p className={`text-sm mt-1 whitespace-pre-wrap ${order.note_is_important ? 'text-amber-800' : 'text-muted-foreground'}`}>
+                  {order.note}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {Object.entries(order.order_details || {}).map(([key, value]) => (
           <div key={key} className={key === 'palletizedCargo' ? 'col-span-2' : undefined}>
             <p className="text-sm font-medium">{formatKeyToReadable(key)}</p>

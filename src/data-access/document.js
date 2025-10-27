@@ -38,7 +38,7 @@ export async function getDocumentsByOrder(orderId) {
  * Uploads documents to Supabase storage and prepares document metadata
  * @param {File[]} files - Array of files to upload
  * @param {Object[]} documentMetadata - Array of metadata for each file
- * @param {string} entityType - Type of entity ('ORDER' or 'COMPANY')
+ * @param {string} entityType - Type of entity ('ORDER' | 'COMPANY' | 'ORDER_QUOTE')
  * @param {string} [customPath] - Optional custom storage path prefix
  * @returns {Promise<Array>} Array of processed document objects
  */

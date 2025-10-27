@@ -63,11 +63,23 @@ export const formConfig = ({ orderData }) => [
       ]},
       { id: 'cargoReadyDate', label: 'Cargo Ready Date', type: 'date' },
       { id: 'quotationDeadline', label: 'Quotation Deadline', type: 'date' },
-      { 
-        id: 'isUrgent', 
-        label: 'Mark as Urgent', 
+      {
+        id: 'isUrgent',
+        label: 'Mark as Urgent',
         type: 'checkbox',
         description: 'Will notify all selected forwarders immediately'
+      },
+      {
+        id: 'note',
+        label: 'Order Note (Optional)',
+        type: 'textarea',
+        placeholder: 'Add any additional information or special instructions for this order...'
+      },
+      {
+        id: 'noteIsImportant',
+        label: 'Mark note as important',
+        type: 'checkbox',
+        description: 'Highlight this note to draw attention'
       },
     ]},
     { section: 'Port Selection', fields: [

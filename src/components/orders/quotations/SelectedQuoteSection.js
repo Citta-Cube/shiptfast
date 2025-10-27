@@ -6,8 +6,9 @@ import { format } from 'date-fns';
 import RatingPopup from './RatingPopup';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import FinalInvoiceControls from '@/components/orders/FinalInvoiceControls';
 
-const SelectedQuoteSection = ({ order, selectedQuote }) => {
+const SelectedQuoteSection = ({ order, selectedQuote, userRole }) => {
   const [existingRating, setExistingRating] = useState(null);
   const [isCheckingRating, setIsCheckingRating] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -210,6 +211,14 @@ const SelectedQuoteSection = ({ order, selectedQuote }) => {
       </CardHeader>
       <CardContent>
         <div className="p-4 bg-muted/30 space-y-6">
+          {/* Final Invoice Controls */}
+          <FinalInvoiceControls 
+            order={order} 
+            selectedQuote={selectedQuote} 
+            userRole={userRole}
+            forwarderCompanyOwnsSelected={false}
+          />
+
           {/* Forwarder Info */}
           <div className="flex items-center justify-between">
             <div className="flex-1">

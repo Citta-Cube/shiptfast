@@ -11,6 +11,7 @@ export async function GET(request) {
     const services = searchParams.get('services');
     const search = searchParams.get('search');
     const sort = searchParams.get('sort');
+    // TODO: get exporterId from user session
     const exporterId = 'e0912188-4fbd-415e-b5a7-19b35cfbab42';
 
     if (!exporterId) {
