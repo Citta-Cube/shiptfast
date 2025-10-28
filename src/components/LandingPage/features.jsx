@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import {
   Accordion,
   AccordionContent,
@@ -61,7 +62,7 @@ const Feature197 = ({
             Streamline your shipping operations with our comprehensive freight management platform designed for exporters and forwarders.
           </p>
         </div>
-        <div className=" flex w-full items-start justify-between gap-12">
+        <div className="flex w-full items-start justify-between gap-12">
           <div className="w-full md:w-1/2">
             <Accordion type="single" className="w-full" defaultValue="item-1">
               {features.map((tab) => (
@@ -78,7 +79,11 @@ const Feature197 = ({
                     className="no-underline cursor-pointer py-5 transition"
                   >
                     <h4
-                      className={`text-xl font-semibold ${tab.id === activeTabId ? 'text-foreground' : 'text-muted-foreground'}`}
+                      className={`text-xl font-semibold ${
+                        tab.id === activeTabId
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
+                      }`}
                     >
                       {tab.title}
                     </h4>
@@ -88,9 +93,11 @@ const Feature197 = ({
                       {tab.description}
                     </p>
                     <div className="mt-4 md:hidden">
-                      <img
+                      <Image
                         src={tab.image}
                         alt={tab.title}
+                        width={600}
+                        height={400}
                         className="h-full max-h-80 w-full rounded-md object-cover"
                       />
                     </div>
@@ -100,10 +107,12 @@ const Feature197 = ({
             </Accordion>
           </div>
           <div className="bg-muted relative m-auto hidden w-1/2 overflow-hidden rounded-xl md:block">
-            <img
+            <Image
               src={activeImage}
               alt="Feature preview"
-              className="aspect-4/3 rounded-md object-cover pl-4"
+              width={800}
+              height={600}
+              className="aspect-[4/3] rounded-md object-cover pl-4"
             />
           </div>
         </div>
