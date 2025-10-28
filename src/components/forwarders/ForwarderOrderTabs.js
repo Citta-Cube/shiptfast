@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import Pagination from '@/components/ui/pagination';
+import { Pagination } from '@/components/ui/pagination';
 import ForwarderOrderList from './ForwarderOrderList';
 
 const ForwarderOrderTabs = ({ orders, viewMode, currentPage, itemsPerPage, onPageChange }) => {

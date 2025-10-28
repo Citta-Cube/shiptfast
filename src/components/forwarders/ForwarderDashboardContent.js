@@ -1,15 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Grid, List } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import Pagination from '@/components/ui/pagination';
 import ForwarderMetrics from '@/components/forwarders/ForwarderMetrics';
 import ForwarderSearchAndFilter from '@/components/forwarders/ForwarderSearchAndFilter';
 import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const router = useRouter();
@@ -17,7 +25,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState([]);
-  console.log(orders);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,7 +42,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     fetchOrders();
   }, []);
 
-  // Fetch orders
   const fetchOrders = async () => {
     setIsLoading(true);
     setError(null);
@@ -53,11 +59,9 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
   };
 
-  // Compute filtered orders based on current orders and filters
   const applyFilters = useCallback(() => {
     let result = [...orders];
 
-    // Apply search filter
     if (activeFilters.searchTerm) {
       const term = activeFilters.searchTerm.toLowerCase();
       result = result.filter(order =>
@@ -65,19 +69,16 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       );
     }
 
-    // Apply shipment type filter
     if (activeFilters.shipmentType !== 'all') {
       const st = String(activeFilters.shipmentType || '').toLowerCase();
       result = result.filter(order => String(order.shipment_type || '').toLowerCase() === st);
     }
 
-    // Apply load type filter
     if (activeFilters.loadType !== 'all') {
       const lt = String(activeFilters.loadType || '').toLowerCase();
       result = result.filter(order => String(order.load_type || '').toLowerCase() === lt);
     }
 
-    // Apply sorting
     if (activeFilters.sortBy) {
       if (activeFilters.sortBy === 'shipmentDate') {
         result.sort((a, b) => new Date(a.cargo_ready_date) - new Date(b.cargo_ready_date));
@@ -99,17 +100,14 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     setFilteredOrders(result);
   }, [orders, activeFilters]);
 
-  // Run filtering whenever applyFilters (and thus its deps) change
   useEffect(() => {
     applyFilters();
   }, [applyFilters]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [activeFilters]);
 
-  // Sync internal state when URL search params (via props) change
   useEffect(() => {
     setActiveFilters(prev => ({
       ...prev,
@@ -125,7 +123,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
     if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
 
-    // Preserve current tab if present
     const currentTab = searchParams?.get('tab');
     if (currentTab) queryParams.set('tab', currentTab);
 
@@ -142,8 +139,34 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     });
   };
 
+  const activeTab = searchParams?.get('tab') || 'all';
+
+  const filteredOrdersForActiveTab = useMemo(() => {
+    if (activeTab === 'all') return filteredOrders;
+    return filteredOrders.filter(order => {
+      switch (activeTab) {
+        case 'open':
+          return order.quote_status === 'open';
+        case 'quoted':
+          return order.quote_status === 'quoted';
+        case 'pending':
+          return order.quote_status === 'pending';
+        case 'rejected':
+          return order.quote_status === 'rejected';
+        case 'selected':
+          return order.quote && order.quote.status === 'SELECTED';
+        default:
+          return true;
+      }
+    });
+  }, [filteredOrders, activeTab]);
+
+  const totalPages = Math.ceil(filteredOrdersForActiveTab.length / itemsPerPage);
+
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   const toggleViewMode = () => {
@@ -171,13 +194,53 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
 
     return (
-      <ForwarderOrderTabs
-        orders={filteredOrders}
-        viewMode={viewMode}
-        currentPage={currentPage}
-        itemsPerPage={itemsPerPage}
-        onPageChange={handlePageChange}
-      />
+      <>
+        <ForwarderOrderTabs
+          orders={filteredOrders}
+          viewMode={viewMode}
+          currentPage={currentPage}
+          itemsPerPage={itemsPerPage}
+          onPageChange={handlePageChange}
+        />
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === i + 1}
+                      onClick={() => handlePageChange(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                {totalPages > 5 && <PaginationEllipsis />}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
+      </>
     );
   };
 
@@ -188,11 +251,9 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
           <h1 className="text-2xl font-bold">Orders Dashboard</h1>
           {!isLoading && (
             <p className="text-sm text-muted-foreground mt-1">
-              {filteredOrders.length > 0 ? (
-                `${filteredOrders.length} orders available`
-              ) : (
-                'No orders found'
-              )}
+              {filteredOrders.length > 0
+                ? `${filteredOrders.length} orders available`
+                : 'No orders found'}
             </p>
           )}
         </div>
