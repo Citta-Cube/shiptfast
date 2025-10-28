@@ -4,8 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 // Upload or replace a final invoice for a selected quote (forwarder-only)
 export async function POST(request) {
-  const supabase = createAdminClient()
   try {
+    const supabase = createAdminClient()
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
