@@ -1,127 +1,115 @@
 'use client'
 
-import Image from 'next/image'
-import { useTheme } from 'next-themes'
+import { useState } from 'react'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 
-const Feature166 = ({
-    title = "Everything you need to manage freight",
-    description = "Streamline your shipping operations with our comprehensive freight management platform designed for exporters and forwarders.",
-    feature1 = {
-      title: "Real-Time Quote Comparison",
+const Feature197 = ({
+  features = [
+    {
+      id: 1,
+      title: 'Real-Time Quote Comparison',
+      image: '/Order-Dark.png',
       description:
-        "Get instant quotes from multiple verified freight forwarders. Compare rates, delivery times, and service quality to make informed decisions.",
-      imageLight: "/Order-Light.png",
-      imageDark: "/Order-Dark.png",
+        'Get instant quotes from multiple verified freight forwarders. Compare rates, delivery times, and service quality to make informed decisions. Our platform connects you with trusted partners worldwide.',
     },
-    feature2 = {
-      title: "Smart Order Management",
+    {
+      id: 2,
+      title: 'Smart Order Management',
+      image: '/Order-Dark.png',
       description:
-        "Streamline your shipping workflow with intelligent order tracking, automated notifications, and comprehensive shipment visibility.",
-      imageLight: "/Order-Light.png",
-      imageDark: "/Order-Dark.png",
+        'Streamline your shipping workflow with intelligent order tracking, automated notifications, and comprehensive shipment visibility. Manage all your freight operations from one centralized platform.',
     },
-    feature3 = {
-      title: "Global Network Access",
+    {
+      id: 3,
+      title: 'Global Network Access',
+      image: '/Order-Dark.png',
       description:
-        "Connect with our worldwide network of trusted freight forwarders and shipping partners for seamless global trade operations.",
-      imageLight: "/Order-Light.png",
-      imageDark: "/Order-Dark.png",
+        'Connect with our worldwide network of trusted freight forwarders and shipping partners for seamless global trade operations. Access competitive rates and reliable services across all major trade routes.',
     },
-    feature4 = {
-      title: "Advanced Analytics",
+    {
+      id: 4,
+      title: 'Advanced Analytics',
+      image: '/Order-Dark.png',
       description:
-        "Make data-driven decisions with comprehensive analytics, performance metrics, and insights to optimize your shipping strategy.",
-      imageLight: "/Order-Light.png",
-      imageDark: "/Order-Dark.png",
+        'Make data-driven decisions with comprehensive analytics, performance metrics, and insights to optimize your shipping strategy. Track costs, delivery times, and partner performance in real-time.',
     },
-  }) => {
-    const { theme } = useTheme()
-    
-    const FeatureImage = ({ feature, className }) => (
-      <div className="relative mt-8">
-        {/* Light mode image */}
-        <Image
-          src={feature.imageLight}
-          alt={feature.title}
-          width={600}
-          height={400}
-          className={`${className} dark:hidden`}
-          priority
-        />
-        {/* Dark mode image */}
-        <Image
-          src={feature.imageDark}
-          alt={feature.title}
-          width={600}
-          height={400}
-          className={`${className} hidden dark:block`}
-          priority
-        />
-      </div>
-    )
+    {
+      id: 5,
+      title: 'Automated Documentation',
+      image: '/Order-Dark.png',
+      description:
+        'Simplify your shipping process with automated document generation and management. Our platform handles all required paperwork and ensures compliance with international shipping regulations.',
+    },
+  ],
+}) => {
+  const [activeTabId, setActiveTabId] = useState(1)
+  const [activeImage, setActiveImage] = useState(features[0]?.image || '/Order-Dark.png')
 
   return (
     <section className="py-16">
-      <div className="mx-auto max-w-7xl px-6">
-        <div className="mb-12 flex flex-col items-center gap-6">
-          <h1 className="text-center text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
-            {title}
+      <div className="container mx-auto">
+        <div className="mb-16 flex flex-col items-center gap-6">
+          <h1 className="text-center text-3xl font-semibold lg:max-w-3xl lg:text-5xl">
+            Everything you need to manage freight
           </h1>
-          <p className="text-center text-lg leading-8 text-muted-foreground max-w-2xl">
-            {description}
+          <p className="text-muted-foreground text-center text-lg font-medium md:max-w-4xl lg:text-xl">
+            Streamline your shipping operations with our comprehensive freight management platform designed for exporters and forwarders.
           </p>
         </div>
-          <div className="relative flex justify-center">
-            <div className="relative flex w-full flex-col border border-border md:w-1/2 lg:w-full">
-              <div className="relative flex flex-col lg:flex-row">
-                <div className="flex flex-col justify-between border-b border-border border-solid p-10 lg:w-3/5 lg:border-b-0 lg:border-r">
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground mb-3">{feature1.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-6">{feature1.description}</p>
-                  </div>
-                  <FeatureImage 
-                    feature={feature1}
-                    className="aspect-[1.5] h-full w-full object-cover lg:aspect-[2.4] rounded-lg"
-                  />
-                </div>
-                <div className="flex flex-col justify-between p-10 lg:w-2/5">
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground mb-3">{feature2.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-6">{feature2.description}</p>
-                  </div>
-                  <FeatureImage 
-                    feature={feature2}
-                    className="aspect-[1.45] h-full w-full object-cover rounded-lg"
-                  />
-                </div>
-              </div>
-              <div className="relative flex flex-col border-t border-border border-solid lg:flex-row">
-                <div className="flex flex-col justify-between border-b border-border border-solid p-10 lg:w-2/5 lg:border-b-0 lg:border-r">
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground mb-3">{feature3.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-6">{feature3.description}</p>
-                  </div>
-                  <FeatureImage 
-                    feature={feature3}
-                    className="aspect-[1.45] h-full w-full object-cover rounded-lg"
-                  />
-                </div>
-                <div className="flex flex-col justify-between p-10 lg:w-3/5">
-                  <div>
-                    <h3 className="text-xl font-semibold text-foreground mb-3">{feature4.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-6">{feature4.description}</p>
-                  </div>
-                  <FeatureImage 
-                    feature={feature4}
-                    className="aspect-[1.5] h-full w-full object-cover lg:aspect-[2.4] rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
+        <div className=" flex w-full items-start justify-between gap-12">
+          <div className="w-full md:w-1/2">
+            <Accordion type="single" className="w-full" defaultValue="item-1">
+              {features.map((tab) => (
+                <AccordionItem
+                  key={tab.id}
+                  value={`item-${tab.id}`}
+                  className="transition-opacity hover:opacity-80"
+                >
+                  <AccordionTrigger
+                    onClick={() => {
+                      setActiveImage(tab.image)
+                      setActiveTabId(tab.id)
+                    }}
+                    className="no-underline cursor-pointer py-5 transition"
+                  >
+                    <h4
+                      className={`text-xl font-semibold ${tab.id === activeTabId ? 'text-foreground' : 'text-muted-foreground'}`}
+                    >
+                      {tab.title}
+                    </h4>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <p className="text-muted-foreground text-base">
+                      {tab.description}
+                    </p>
+                    <div className="mt-4 md:hidden">
+                      <img
+                        src={tab.image}
+                        alt={tab.title}
+                        className="h-full max-h-80 w-full rounded-md object-cover"
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+          <div className="bg-muted relative m-auto hidden w-1/2 overflow-hidden rounded-xl md:block">
+            <img
+              src={activeImage}
+              alt="Feature preview"
+              className="aspect-4/3 rounded-md object-cover pl-4"
+            />
           </div>
         </div>
-      </section>
-    );
-  };
-  
-  export { Feature166 };
+      </div>
+    </section>
+  )
+}
+
+export { Feature197 }

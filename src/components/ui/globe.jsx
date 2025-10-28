@@ -10,19 +10,12 @@ const MOVEMENT_DAMPING = 1400
 
 export function Globe({ className }) {
   const { theme } = useTheme()
-  const phiRef = useRef(0) // Store phi in a ref to persist across renders
-  const widthRef = useRef(0)
+  const phiRef = useRef(0)
   const canvasRef = useRef(null)
-  const pointerInteracting = useRef(null)
-  const pointerInteractionMovement = useRef(0)
   const globeRef = useRef(null)
-
+  const pointerStartX = useRef(null)
   const r = useMotionValue(0)
-  const rs = useSpring(r, {
-    mass: 1,
-    damping: 30,
-    stiffness: 100,
-  })
+  const rs = useSpring(r, { mass: 1, damping: 30, stiffness: 100 })
 
   const hslToRgbArray = useCallback((hsl) => {
     const el = document.createElement("div")
@@ -30,43 +23,34 @@ export function Globe({ className }) {
     document.body.appendChild(el)
     const rgb = getComputedStyle(el).color
     document.body.removeChild(el)
-    const [r, g, b] = rgb.match(/\d+/g).map((x) => parseInt(x) / 255)
-    return [r, g, b]
+    return rgb.match(/\d+/g).map((x) => parseInt(x) / 255)
   }, [])
 
   const initGlobe = useCallback(() => {
     if (!canvasRef.current) return
 
-    widthRef.current = canvasRef.current.offsetWidth
+    const width = canvasRef.current.offsetWidth * 2
     const rootStyles = getComputedStyle(document.documentElement)
     const primaryColor = hslToRgbArray(`hsl(${rootStyles.getPropertyValue("--primary")})`)
-    const isDark = theme === 'dark'
+    const isDark = theme === "dark"
 
-    if (globeRef.current) {
-      globeRef.current.destroy()
-    }
+    if (globeRef.current) return // ✅ Prevent unnecessary re-init
 
     const globe = createGlobe(canvasRef.current, {
-      width: widthRef.current * 2,
-      height: widthRef.current * 2,
+      width,
+      height: width,
       devicePixelRatio: 2,
       phi: 0,
       theta: 0.3,
-      // Theme-based configuration
       dark: isDark ? 1 : 0,
       diffuse: isDark ? 1.2 : 0.4,
       mapSamples: 16000,
       mapBrightness: isDark ? 1.1 : 1.2,
-      // Colors based on theme
-      baseColor: isDark 
+      baseColor: isDark
         ? hslToRgbArray(`hsl(${rootStyles.getPropertyValue("--muted-foreground")})`)
-        : [1, 1, 1], // White for light mode
-      glowColor: isDark 
-        ? [1, 1, 1]
-        : [1, 1, 1], // White glow for light mode
-        markerColor: isDark 
-        ? primaryColor
-        : primaryColor,
+        : [1, 1, 1],
+      glowColor: [1, 1, 1],
+      markerColor: primaryColor,
       markers: [
         { location: [14.5995, 120.9842], size: 0.03 },
         { location: [19.076, 72.8777], size: 0.1 },
@@ -80,69 +64,69 @@ export function Globe({ className }) {
         { location: [41.0082, 28.9784], size: 0.06 },
       ],
       onRender: (state) => {
-        if (!pointerInteracting.current) phiRef.current += 0.005 // Use ref instead of variable
+        phiRef.current += 0.005
         state.phi = phiRef.current + rs.get()
-        state.width = widthRef.current * 2
-        state.height = widthRef.current * 2
       },
     })
 
     globeRef.current = globe
     setTimeout(() => (canvasRef.current.style.opacity = "1"), 0)
-  }, [theme, rs, hslToRgbArray]) // Include all dependencies
+  }, [theme, rs, hslToRgbArray])
 
   useEffect(() => {
-    const onResize = () => {
-      if (canvasRef.current) widthRef.current = canvasRef.current.offsetWidth
-      initGlobe()
+    let resizeTimeout
+
+    const handleResize = () => {
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(() => {
+        if (!canvasRef.current || !globeRef.current) return
+        const width = canvasRef.current.offsetWidth * 2
+        globeRef.current.width = width
+        globeRef.current.height = width
+      }, 250) // 🧠 Throttle to avoid flickering
     }
 
-    window.addEventListener("resize", onResize)
+    window.addEventListener("resize", handleResize, { passive: true })
     initGlobe()
 
     return () => {
+      clearTimeout(resizeTimeout)
       if (globeRef.current) globeRef.current.destroy()
-      window.removeEventListener("resize", onResize)
+      globeRef.current = null
+      window.removeEventListener("resize", handleResize)
     }
-  }, [initGlobe]) // Now we can safely include initGlobe
+  }, [initGlobe])
 
-  const updatePointerInteraction = (value) => {
-    pointerInteracting.current = value
-    if (canvasRef.current) {
-      canvasRef.current.style.cursor = value !== null ? "grabbing" : "grab"
-    }
+  const handlePointerDown = (e) => {
+    pointerStartX.current = e.clientX || e.touches?.[0]?.clientX
+    if (canvasRef.current) canvasRef.current.style.cursor = "grabbing"
   }
 
-  const updateMovement = (clientX) => {
-    if (pointerInteracting.current !== null) {
-      const delta = clientX - pointerInteracting.current
-      pointerInteractionMovement.current = delta
-      r.set(r.get() + delta / MOVEMENT_DAMPING)
-    }
+  const handlePointerMove = (e) => {
+    if (pointerStartX.current == null) return
+    const clientX = e.clientX || e.touches?.[0]?.clientX
+    const delta = clientX - pointerStartX.current
+    r.set(r.get() + delta / MOVEMENT_DAMPING)
+    pointerStartX.current = clientX
+  }
+
+  const handlePointerUp = () => {
+    pointerStartX.current = null
+    if (canvasRef.current) canvasRef.current.style.cursor = "grab"
   }
 
   return (
-    <div
-      className={cn(
-        "absolute inset-0 mx-auto aspect-[1/1] w-full max-w-[600px]",
-        className
-      )}
-    >
+    <div className={cn("absolute inset-0 mx-auto aspect-square w-full max-w-[600px]", className)}>
       <canvas
         ref={canvasRef}
-        className={cn(
-          "size-full opacity-0 transition-opacity duration-500 [contain:layout_paint_size]"
-        )}
-        onPointerDown={(e) => {
-          pointerInteracting.current = e.clientX
-          updatePointerInteraction(e.clientX)
-        }}
-        onPointerUp={() => updatePointerInteraction(null)}
-        onPointerOut={() => updatePointerInteraction(null)}
-        onMouseMove={(e) => updateMovement(e.clientX)}
-        onTouchMove={(e) =>
-          e.touches[0] && updateMovement(e.touches[0].clientX)
-        }
+        className="size-full opacity-0 transition-opacity duration-700 [contain:layout_paint_size]"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerOut={handlePointerUp}
+        onMouseMove={handlePointerMove}
+        onTouchMove={handlePointerMove}
+        onTouchStart={handlePointerDown}
+        onTouchEnd={handlePointerUp}
       />
     </div>
   )
