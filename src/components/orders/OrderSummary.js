@@ -22,7 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const OrderSummary = ({ order }) => {
+const OrderSummary = ({ order, canCancel = true }) => {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -64,7 +64,7 @@ const OrderSummary = ({ order }) => {
             </Badge>
           )}
         </div>
-        {!['cancelled', 'closed'].includes(order.status.toLowerCase()) && (
+        {canCancel && !['cancelled', 'closed'].includes(order.status.toLowerCase()) && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 

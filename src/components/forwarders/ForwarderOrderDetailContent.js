@@ -31,8 +31,8 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Order Summary - reusing existing component */}
-        <OrderSummary order={order} />
+        {/* Order Summary - forwarders cannot cancel orders */}
+        <OrderSummary order={order} canCancel={false} />
         
         {/* Document Section - reusing existing component */}
         <DocumentSection
