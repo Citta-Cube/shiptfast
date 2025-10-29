@@ -164,7 +164,7 @@ export default async function Home() {
                   asChild 
                   variant="new"
                   size="lg" className="rounded-xl px-8 py-3 text-base font-semibold shadow-lg">
-                    <Link href="/auth/sign-up">
+                    <Link href="/auth/signin">
                       <span className="text-nowrap">Start Shipping Smarter</span>
                     </Link>
                   </Button>

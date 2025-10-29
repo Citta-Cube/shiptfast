@@ -15,6 +15,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Ship, Plane } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import FinalInvoiceControls from '@/components/orders/FinalInvoiceControls';
+import ExporterRatingPrompt from '@/components/forwarders/ExporterRatingPrompt';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -429,13 +430,14 @@ const QuoteManagementSection = ({
                   <div className="p-4 border-t bg-muted/30 space-y-6">
                     {/* Final Invoice Controls - shown when this is the selected quote */}
                     {quote.id === selectedQuoteId && (
-                      <div>
+                      <div className="space-y-3">
                         <FinalInvoiceControls 
                           order={{ id: orderId, selected_quote_id: selectedQuoteId }} 
                           selectedQuote={quote} 
                           userRole="forwarder" 
                           forwarderCompanyOwnsSelected={true}
                         />
+                        <ExporterRatingPrompt orderId={orderId} />
                       </div>
                     )}
 
