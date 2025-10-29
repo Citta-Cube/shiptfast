@@ -191,9 +191,17 @@ const SelectedQuoteSection = ({ order, selectedQuote, userRole }) => {
                   forwarderName={selectedQuote.companies?.name || 'Unknown Forwarder'}
                   orderId={order.id}
                   forwarderId={selectedQuote.freight_forwarder_id}
-                  onRatingSubmitted={() => {
-                    // Refresh rating status
-                    setExistingRating({ average_score: 5 }); // Temporary until we get actual data
+                  onRatingSubmitted={async () => {
+                    // Refresh rating status by fetching actual data
+                    try {
+                      const response = await fetch(`/api/orders/${order.id}/rating-status`);
+                      if (response.ok) {
+                        const data = await response.json();
+                        setExistingRating(data.rating);
+                      }
+                    } catch (error) {
+                      console.error('Error fetching updated rating:', error);
+                    }
                   }}
                 />
               )}

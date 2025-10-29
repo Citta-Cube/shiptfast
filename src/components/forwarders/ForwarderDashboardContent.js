@@ -16,11 +16,11 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState([]);
-  console.log(orders);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
+  const itemsPerPage = 9;
   const [activeFilters, setActiveFilters] = useState({
     searchTerm: '',
     shipmentType: initialFilters.shipmentType || 'all',
@@ -32,7 +32,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     fetchOrders();
   }, []);
 
-  // Fetch orders
   const fetchOrders = async () => {
     setIsLoading(true);
     setError(null);
@@ -50,11 +49,9 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
   };
 
-  // Compute filtered orders based on current orders and filters
   const applyFilters = useCallback(() => {
     let result = [...orders];
 
-    // Apply search filter
     if (activeFilters.searchTerm) {
       const term = activeFilters.searchTerm.toLowerCase();
       result = result.filter(order =>
@@ -62,19 +59,16 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       );
     }
 
-    // Apply shipment type filter
     if (activeFilters.shipmentType !== 'all') {
       const st = String(activeFilters.shipmentType || '').toLowerCase();
       result = result.filter(order => String(order.shipment_type || '').toLowerCase() === st);
     }
 
-    // Apply load type filter
     if (activeFilters.loadType !== 'all') {
       const lt = String(activeFilters.loadType || '').toLowerCase();
       result = result.filter(order => String(order.load_type || '').toLowerCase() === lt);
     }
 
-    // Apply sorting
     if (activeFilters.sortBy) {
       if (activeFilters.sortBy === 'shipmentDate') {
         result.sort((a, b) => new Date(a.cargo_ready_date) - new Date(b.cargo_ready_date));
@@ -96,12 +90,10 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     setFilteredOrders(result);
   }, [orders, activeFilters]);
 
-  // Run filtering whenever applyFilters (and thus its deps) change
   useEffect(() => {
     applyFilters();
   }, [applyFilters]);
 
-  // Sync internal state when URL search params (via props) change
   useEffect(() => {
     setActiveFilters(prev => ({
       ...prev,
@@ -117,7 +109,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
     if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
 
-    // Preserve current tab if present
     const currentTab = searchParams?.get('tab');
     if (currentTab) queryParams.set('tab', currentTab);
 
@@ -133,6 +124,7 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       return updated;
     });
   };
+
 
   const toggleViewMode = () => {
     setViewMode(prevMode => prevMode === 'grid' ? 'list' : 'grid');
@@ -159,18 +151,29 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
 
     return (
-      <ForwarderOrderTabs
-        orders={filteredOrders}
-        viewMode={viewMode}
-        initialTab={(initialFilters.tab || initialFilters.status || 'all')}
-      />
+      <>
+        <ForwarderOrderTabs
+          orders={filteredOrders}
+          viewMode={viewMode}
+          itemsPerPage={itemsPerPage}
+        />
+      </>
     );
   };
 
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Orders Dashboard</h1>
+          {!isLoading && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {filteredOrders.length > 0
+                ? `${filteredOrders.length} orders available`
+                : 'No orders found'}
+            </p>
+          )}
+        </div>
         <Button variant="outline" size="sm" onClick={toggleViewMode}>
           {viewMode === 'grid' ? <List className="h-4 w-4 mr-2" /> : <Grid className="h-4 w-4 mr-2" />}
           {viewMode === 'grid' ? 'List View' : 'Grid View'}

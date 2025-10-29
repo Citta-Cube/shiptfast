@@ -4,37 +4,48 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import ForwarderOrderList from './ForwarderOrderList';
 
-// Valid tab keys for defensive checks
 const VALID_TABS = ['all', 'open', 'quoted', 'pending', 'rejected', 'selected'];
 
-const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
+const ForwarderOrderTabs = ({
+  orders = [],
+  viewMode = 'grid',
+  itemsPerPage = 9,
+  initialTab = 'all',
+}) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Pick initial tab from props or URL (fallback supports legacy `status` param)
+  // Determine tab from URL or props
   const derivedInitialTab = useMemo(() => {
     const urlTab = searchParams?.get('tab') || searchParams?.get('status');
-    const candidate = (initialTab || urlTab || 'all').toLowerCase();
+    const candidate = (urlTab || initialTab || 'all').toLowerCase();
     return VALID_TABS.includes(candidate) ? candidate : 'all';
   }, [initialTab, searchParams]);
 
   const [activeTab, setActiveTab] = useState(derivedInitialTab);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginatedOrders, setPaginatedOrders] = useState([]);
 
-  // Keep state in sync if URL changes externally (e.g., sidebar click)
+  // Keep activeTab in sync with URL
   useEffect(() => {
-    if (activeTab !== derivedInitialTab) {
-      setActiveTab(derivedInitialTab);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [derivedInitialTab]);
-  
-  // Filter orders based on the active tab
-  const getFilteredOrders = () => {
+    if (activeTab !== derivedInitialTab) setActiveTab(derivedInitialTab);
+  }, [derivedInitialTab, activeTab]);
+
+  // Filter orders by tab
+  const getFilteredOrders = useMemo(() => {
     if (activeTab === 'all') return orders;
-    
     return orders.filter(order => {
       switch (activeTab) {
         case 'open':
@@ -46,37 +57,48 @@ const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
         case 'rejected':
           return order.quote_status === 'rejected';
         case 'selected':
-          // Check if quote exists and its status is SELECTED
           return order.quote && order.quote.status === 'SELECTED';
         default:
           return true;
       }
     });
-  };
-  
-  // Count orders for each tab
-  const counts = {
-    all: orders.length,
-    open: orders.filter(order => order.quote_status === 'open').length,
-    quoted: orders.filter(order => order.quote_status === 'quoted').length,
-    pending: orders.filter(order => order.quote_status === 'pending').length,
-    rejected: orders.filter(order => order.quote_status === 'rejected').length,
-    selected: orders.filter(order => order.quote && order.quote.status === 'SELECTED').length
-  };
+  }, [orders, activeTab]);
 
+  // Count per tab
+  const counts = useMemo(
+    () => ({
+      all: orders.length,
+      open: orders.filter(o => o.quote_status === 'open').length,
+      quoted: orders.filter(o => o.quote_status === 'quoted').length,
+      pending: orders.filter(o => o.quote_status === 'pending').length,
+      rejected: orders.filter(o => o.quote_status === 'rejected').length,
+      selected: orders.filter(o => o.quote && o.quote.status === 'SELECTED').length,
+    }),
+    [orders]
+  );
+
+  // Paginate filtered orders
+  useEffect(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    setPaginatedOrders(getFilteredOrders.slice(start, end));
+  }, [getFilteredOrders, currentPage, itemsPerPage]);
+
+  // Handle tab change and URL sync
   const handleTabChange = (value) => {
     const next = VALID_TABS.includes(value) ? value : 'all';
     setActiveTab(next);
+    setCurrentPage(1); // Reset pagination on tab change
 
-    // Preserve existing filters while updating the tab param
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('tab', next);
-    // Optional: drop legacy `status` if present
     if (params.has('status')) params.delete('status');
+    const nextUrl = params.toString() ? `${pathname}?${params}` : pathname;
 
-    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     router.push(nextUrl);
   };
+
+  const totalPages = Math.ceil(getFilteredOrders.length / itemsPerPage);
 
   return (
     <Tabs defaultValue="all" value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -100,29 +122,47 @@ const ForwarderOrderTabs = ({ orders, viewMode, initialTab = 'all' }) => {
           Selected <Badge className="ml-2 bg-green-500">{counts.selected}</Badge>
         </TabsTrigger>
       </TabsList>
-      
-      <TabsContent value="all" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
-      </TabsContent>
-      
-      <TabsContent value="open" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
-      </TabsContent>
-      
-      <TabsContent value="quoted" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
-      </TabsContent>
-      
-      <TabsContent value="pending" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
-      </TabsContent>
-      
-      <TabsContent value="rejected" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
-      </TabsContent>
 
-      <TabsContent value="selected" className="mt-6">
-        <ForwarderOrderList orders={getFilteredOrders()} viewMode={viewMode} />
+      <TabsContent value={activeTab} className="mt-6">
+        <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
+
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                {totalPages > 5 && <PaginationEllipsis />}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </TabsContent>
     </Tabs>
   );

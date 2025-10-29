@@ -4,7 +4,7 @@ import HeroHeader from '@/components/LandingPage/navbar'
 import LightRays from '@/components/ui/lightrays'
 import { StarsBackground } from '@/components/ui/stars'
 import LogoCloud from '@/components/LandingPage/logocloud'
-import { Feature166 } from '@/components/LandingPage/features'
+import { Feature197 } from '@/components/LandingPage/features'
 import { Pricing04 } from '@/components/LandingPage/pricing'
 import { Contact2 } from '@/components/LandingPage/contact2'
 import FooterSection from '@/components/LandingPage/footerNew'
@@ -14,6 +14,7 @@ import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TextEffect } from '@/components/ui/text-effect'
 import { AnimatedGroup } from '@/components/ui/animated-group'
+import HeroSection from '@/components/LandingPage/hero-section'
 
 const transitionVariants = {
   item: {
@@ -53,7 +54,7 @@ export default async function Home() {
       <div className="fixed inset-0 z-0 pointer-events-none">
         {/* Starfield Background */}
         <StarsBackground className="absolute inset-0" speed={60} factor={0.03} />
-        
+
         {/* Light Rays - Increased visibility */}
         <div className="absolute inset-0">
           <LightRays
@@ -124,15 +125,9 @@ export default async function Home() {
                 </Link>
               </AnimatedGroup>
 
-              {/* Main Heading */}
-              <TextEffect
-                preset="fade-in-blur"
-                speedSegment={0.3}
-                as="h1"
-                className="mt-8 text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[5.25rem] relative z-10  bg-gradient-to-b from-foreground to-foreground/80 bg-clip-text"
-              >
-                Ship Smarter. Quote Faster. Grow Without Limits.
-              </TextEffect>
+              {/* Main Heading with Text Flip */}
+              <HeroSection />
+
 
               {/* Subtext */}
               <TextEffect
@@ -165,8 +160,11 @@ export default async function Home() {
                 className="mt-12 flex flex-col items-center justify-center gap-4 md:flex-row relative z-10"
               >
                 <div className="flex flex-col items-center justify-center gap-4 md:flex-row">
-                  <Button asChild size="lg" className="rounded-xl px-8 py-3 text-base font-semibold shadow-lg">
-                    <Link href="/auth/sign-up">
+                  <Button 
+                  asChild 
+                  variant="new"
+                  size="lg" className="rounded-xl px-8 py-3 text-base font-semibold shadow-lg">
+                    <Link href="/auth/signin">
                       <span className="text-nowrap">Start Shipping Smarter</span>
                     </Link>
                   </Button>
@@ -250,7 +248,7 @@ export default async function Home() {
               ...transitionVariants,
             }}
           >
-            <Feature166 />
+            <Feature197 />
           </AnimatedGroup>
         </section>
 

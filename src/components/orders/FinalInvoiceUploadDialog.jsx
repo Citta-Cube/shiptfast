@@ -38,8 +38,14 @@ export default function FinalInvoiceUploadDialog({ open, onOpenChange, orderId, 
       form.append('orderId', orderId)
       form.append('quoteId', quoteId)
       const res = await fetch('/api/invoices/upload', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      let data
+      try {
+        data = await res.json()
+      } catch (_) {
+        const text = await res.text().catch(() => '')
+        data = { error: text }
+      }
+      if (!res.ok) throw new Error(data?.error || 'Upload failed')
       toast.success('Final invoice uploaded')
       onUploaded?.(data.invoice)
       onOpenChange(false)
