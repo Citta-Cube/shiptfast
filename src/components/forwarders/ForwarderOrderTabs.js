@@ -4,7 +4,15 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Pagination } from '@/components/ui/pagination';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import ForwarderOrderList from './ForwarderOrderList';
 
 const VALID_TABS = ['all', 'open', 'quoted', 'pending', 'rejected', 'selected'];
@@ -33,7 +41,7 @@ const ForwarderOrderTabs = ({
   // Keep activeTab in sync with URL
   useEffect(() => {
     if (activeTab !== derivedInitialTab) setActiveTab(derivedInitialTab);
-  }, [derivedInitialTab]);
+  }, [derivedInitialTab, activeTab]);
 
   // Filter orders by tab
   const getFilteredOrders = useMemo(() => {
@@ -119,12 +127,40 @@ const ForwarderOrderTabs = ({
         <ForwarderOrderList orders={paginatedOrders} viewMode={viewMode} />
 
         {totalPages > 1 && (
-          <div className="mt-8">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+          <div className="mt-8 flex justify-center">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === i + 1}
+                      onClick={() => setCurrentPage(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                {totalPages > 5 && <PaginationEllipsis />}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         )}
       </TabsContent>

@@ -364,6 +364,14 @@ const QuoteManagementSection = ({
                   </div>
                   
                   <div className="flex items-center space-x-2">
+                    {/* Rating section - only show for selected quotes */}
+                    {quote.id === selectedQuoteId && (
+                      <ExporterRatingPrompt 
+                        orderId={orderId} 
+                        exporterName={null}
+                      />
+                    )}
+                    
                     {quote.status === 'ACTIVE' && (
                       <>
                         {/* Edit Quote - Only available when order status is OPEN */}
@@ -437,7 +445,6 @@ const QuoteManagementSection = ({
                           userRole="forwarder" 
                           forwarderCompanyOwnsSelected={true}
                         />
-                        <ExporterRatingPrompt orderId={orderId} />
                       </div>
                     )}
 

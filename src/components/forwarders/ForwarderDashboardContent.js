@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,15 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import ForwarderMetrics from '@/components/forwarders/ForwarderMetrics';
 import ForwarderSearchAndFilter from '@/components/forwarders/ForwarderSearchAndFilter';
 import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 
 const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const router = useRouter();
@@ -29,7 +20,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
   const [activeFilters, setActiveFilters] = useState({
     searchTerm: '',
@@ -105,10 +95,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   }, [applyFilters]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [activeFilters]);
-
-  useEffect(() => {
     setActiveFilters(prev => ({
       ...prev,
       shipmentType: initialFilters.shipmentType || 'all',
@@ -139,35 +125,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     });
   };
 
-  const activeTab = searchParams?.get('tab') || 'all';
-
-  const filteredOrdersForActiveTab = useMemo(() => {
-    if (activeTab === 'all') return filteredOrders;
-    return filteredOrders.filter(order => {
-      switch (activeTab) {
-        case 'open':
-          return order.quote_status === 'open';
-        case 'quoted':
-          return order.quote_status === 'quoted';
-        case 'pending':
-          return order.quote_status === 'pending';
-        case 'rejected':
-          return order.quote_status === 'rejected';
-        case 'selected':
-          return order.quote && order.quote.status === 'SELECTED';
-        default:
-          return true;
-      }
-    });
-  }, [filteredOrders, activeTab]);
-
-  const totalPages = Math.ceil(filteredOrdersForActiveTab.length / itemsPerPage);
-
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
 
   const toggleViewMode = () => {
     setViewMode(prevMode => prevMode === 'grid' ? 'list' : 'grid');
@@ -198,48 +155,8 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
         <ForwarderOrderTabs
           orders={filteredOrders}
           viewMode={viewMode}
-          currentPage={currentPage}
           itemsPerPage={itemsPerPage}
-          onPageChange={handlePageChange}
         />
-
-        {totalPages > 1 && (
-          <div className="mt-8 flex justify-center">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <PaginationItem key={i}>
-                    <PaginationLink
-                      href="#"
-                      isActive={currentPage === i + 1}
-                      onClick={() => handlePageChange(i + 1)}
-                    >
-                      {i + 1}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-
-                {totalPages > 5 && <PaginationEllipsis />}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
       </>
     );
   };

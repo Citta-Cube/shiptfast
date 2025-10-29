@@ -64,8 +64,23 @@ const ExporterRatingPrompt = ({ orderId, exporterName }) => {
       {checkingRating ? (
         <div className="text-sm text-muted-foreground">Checking your rating…</div>
       ) : existingRating ? (
-        <div className="text-sm">
-          Your rating: <span className="font-medium">{Number(existingRating.average_score).toFixed(1)}/5</span>
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Your rating:</span>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                className={`h-4 w-4 ${
+                  star <= Math.round(existingRating.average_score)
+                    ? 'text-yellow-400 fill-current'
+                    : 'text-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="font-medium text-xs">
+            {Number(existingRating.average_score).toFixed(1)}/5
+          </span>
         </div>
       ) : (
         <ExporterRatingPopup
