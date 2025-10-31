@@ -39,7 +39,7 @@ export async function PATCH(request, { params }) {
             );
         }
 
-        const cancelledOrder = await cancelOrder(id);
+    const cancelledOrder = await cancelOrder(id);
         // Send email immediately for ORDER_CANCELLED to selected forwarders
         try {
             await processEmailNotifications({ types: ['ORDER_CANCELLED'], orderId: id })
@@ -62,6 +62,13 @@ export async function PATCH(request, { params }) {
         if (error.message === 'Order is already cancelled') {
             return NextResponse.json(
                 { error: 'Order is already cancelled' },
+                { status: 400 }
+            );
+        }
+
+        if (error.message === 'Order cannot be cancelled in its current status') {
+            return NextResponse.json(
+                { error: 'Order cannot be cancelled in its current status' },
                 { status: 400 }
             );
         }

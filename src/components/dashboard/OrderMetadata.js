@@ -11,31 +11,41 @@ const LoadTypeIcon = ({ type }) => {
 };
   
 const StatusBadge = ({ status }) => {
-    const statusColors = {
-        open: 'bg-green-500',
-        pending: 'bg-amber-500',
-        closed: 'bg-neutral-500',
-        cancelled: 'bg-red-500',
-    };
+  const key = (status || '').toLowerCase()
+  const statusColors = {
+    open: 'bg-green-500',
+    pending: 'bg-amber-500',
+    closed: 'bg-neutral-500',
+    cancelled: 'bg-red-500',
+    reassign: 'bg-amber-600',
+    voided: 'bg-red-600',
+  };
 
-    return (
-        <Badge className={`${statusColors[status.toLowerCase()]} text-white`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-        </Badge>
-    );
+  const label = key.charAt(0).toUpperCase() + key.slice(1)
+
+  return (
+    <Badge className={`${statusColors[key] || 'bg-neutral-400'} text-white`}>
+      {label}
+    </Badge>
+  );
 };
 
 const QuoteStatusBadge = ({ status }) => {
+  const key = (status || '').toLowerCase()
   const statusColors = {
     active: 'bg-green-500',
     cancelled: 'bg-red-500',
     expired: 'bg-neutral-500',
-    rejected: 'bg-neutral-500'
+    rejected: 'bg-neutral-500',
+    withdrawn: 'bg-amber-600',
+    revoked: 'bg-red-700',
   };
 
+  const label = key.toUpperCase()
+
   return (
-    <Badge className={`${statusColors[status.toLowerCase()]} text-white`}>
-      {status}
+    <Badge className={`${statusColors[key] || 'bg-neutral-400'} text-white`}>
+      {label}
     </Badge>
   );
 };
