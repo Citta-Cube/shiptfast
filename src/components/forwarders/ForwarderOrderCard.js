@@ -21,13 +21,13 @@ const ForwarderOrderCard = ({ order }) => {
 
   // Determine the quote status and action text
   const getQuoteStatusAndAction = () => {
-    // If order is cancelled, disable button
+    // If order is cancelled, button is enabled and navigates to details
     if (order.status === 'CANCELLED') {
       return {
         badge: null,
         actionText: 'Order Cancelled',
         actionHref: `/forwarders/orders/${order.id}`,
-        disabled: true
+        disabled: false
       };
     }
 
@@ -178,7 +178,8 @@ const ForwarderOrderCard = ({ order }) => {
       
       <CardFooter className="pt-4">
         <div className="flex w-full items-center justify-between">
-          {footerInfo && (
+          {/* Left side: footer info (if any) */}
+          {footerInfo ? (
             <div className="flex items-center space-x-2">
               <footerInfo.icon className="h-4 w-4 text-muted-foreground" />
               <div className="flex flex-col">
@@ -189,12 +190,13 @@ const ForwarderOrderCard = ({ order }) => {
                 </span>
               </div>
             </div>
-          )}
-          
+          ) : <div />}
+
+          {/* Right side: action button (always right-aligned) */}
           <Link href={actionHref} passHref>
             <Button 
-              variant="secondary" 
-              className={`${footerInfo ? '' : 'w-full'} ${!footerInfo ? 'min-w-[120px]' : 'min-w-[100px]'}`}
+              variant="secondary"
+              className={`${footerInfo ? '' : 'w-full'} ${!footerInfo ? 'min-w-[120px]' : 'min-w-[100px]'} ml-auto`}
               disabled={isLoading}
               onClick={handleButtonClick}
             >
