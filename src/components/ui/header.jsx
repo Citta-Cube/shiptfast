@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useClerk, useUser } from '@clerk/nextjs'
+import { useRouter, usePathname } from 'next/navigation'
+import { useClerk, useUser, useAuth } from '@clerk/nextjs'
 import { Menu, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -18,8 +18,10 @@ const Header = ({ userType = 'EXPORTER' }) => {
   const [loading, setLoading] = useState(true)
   const [isNavigating, setIsNavigating] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const { signOut } = useClerk()
   const { user, isLoaded } = useUser()
+  const { getToken } = useAuth()
   
   // Select the appropriate config based on userType
   const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
@@ -31,7 +33,10 @@ const Header = ({ userType = 'EXPORTER' }) => {
     const fetchUserData = async () => {
       try {
         setLoading(true)
-        const supabase = createClient()
+        
+        // Get Clerk JWT token for Supabase RLS - skip cache to ensure fresh token
+        const supabaseToken = await getToken({ template: 'supabase', skipCache: true })
+        const supabase = createClient(supabaseToken)
 
         // Fetch user's company information
         const { data: companyData, error: companyError } = await supabase
@@ -76,7 +81,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
     }
 
     fetchUserData()
-  }, [isLoaded, user])
+  }, [isLoaded, user, getToken, pathname])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)

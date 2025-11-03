@@ -13,11 +13,22 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth();  
+  const { userId, getToken } = await auth();  
+  const supabaseToken = userId ? await getToken({ template: "supabase"}) : null;
+  
   const pathname = req.nextUrl.pathname;
 
   // Allow public routes
-  if (isPublicRoute(req)) return NextResponse.next();
+  if (isPublicRoute(req)) {
+    if (supabaseToken) {
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set("Authorization", `Bearer ${supabaseToken}`);
+      return NextResponse.next({
+        request: { headers: requestHeaders }
+      });
+    }
+    return NextResponse.next();
+  }
 
   // Signed-in users on auth pages → redirect to dashboard
   const isAuthRoute =
@@ -39,7 +50,8 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   // Signed-in → enforce company-type access
-  if (userId) {
+  // Skip /dashboard route - it handles its own routing logic
+  if (userId && pathname !== "/dashboard") {
     const isForwarderRoute = pathname.startsWith("/forwarders");
     const isExporterRoute = pathname.startsWith("/exporters");
 
@@ -47,6 +59,20 @@ export default clerkMiddleware(async (auth, req) => {
       try {
         const membership = await getUserCompanyMembership(userId);
         const companyType = membership?.companies?.type;
+
+        // If membership can't be determined, let /dashboard handle it
+        if (!membership || !companyType) {
+          // Don't redirect - let the page handle missing membership
+          // But still add the token header before proceeding
+          if (supabaseToken) {
+            const requestHeaders = new Headers(req.headers);
+            requestHeaders.set("Authorization", `Bearer ${supabaseToken}`);
+            return NextResponse.next({
+              request: { headers: requestHeaders }
+            });
+          }
+          return NextResponse.next();
+        }
 
         // Allow exporters to access /forwarders (for browsing freight forwarders)
         // Only block /forwarders/dashboard and other forwarder-specific routes
@@ -67,8 +93,28 @@ export default clerkMiddleware(async (auth, req) => {
         }
       } catch (err) {
         console.error("Error checking membership:", err);
+        // On error, allow the request to proceed to avoid redirect loops
+        // The page component will handle the error state
+        // But still add the token header before proceeding
+        if (supabaseToken) {
+          const requestHeaders = new Headers(req.headers);
+          requestHeaders.set("Authorization", `Bearer ${supabaseToken}`);
+          return NextResponse.next({
+            request: { headers: requestHeaders }
+          });
+        }
+        return NextResponse.next();
       }
     }
+  }
+
+  // Add token to headers for all authenticated requests
+  if (supabaseToken) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("Authorization", `Bearer ${supabaseToken}`);
+    return NextResponse.next({
+      request: { headers: requestHeaders }
+    });
   }
 
   return NextResponse.next();
