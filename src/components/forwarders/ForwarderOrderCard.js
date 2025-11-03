@@ -39,7 +39,7 @@ const ForwarderOrderCard = ({ order }) => {
         disabled: false
       };
     }
-    
+
     if (order.quote_status) {
       switch (order.quote_status) {
         case 'quoted':
@@ -72,7 +72,7 @@ const ForwarderOrderCard = ({ order }) => {
           };
       }
     }
-    
+
     return {
       badge: null,
       actionText: 'View Details',
@@ -80,7 +80,7 @@ const ForwarderOrderCard = ({ order }) => {
       disabled: false
     };
   };
-  
+
   const { badge, actionText, actionHref, disabled } = getQuoteStatusAndAction();
 
   // Determine what to show in footer
@@ -94,7 +94,7 @@ const ForwarderOrderCard = ({ order }) => {
         icon: Clock
       };
     }
-    
+
     // Show quote if available
     if (order.quote) {
       return {
@@ -104,7 +104,7 @@ const ForwarderOrderCard = ({ order }) => {
         icon: DollarSign
       };
     }
-    
+
     return null;
   };
 
@@ -140,7 +140,7 @@ const ForwarderOrderCard = ({ order }) => {
             <LoadTypeIcon type={order.load_type} />
             <span className="text-sm font-medium">{order.load_type}</span>
           </div>
-          
+
           <div className="col-span-2 flex items-center space-x-2">
             <Avatar className="h-6 w-6">
               <AvatarImage src={order.exporter.iconurl || ''} />
@@ -148,7 +148,7 @@ const ForwarderOrderCard = ({ order }) => {
             </Avatar>
             <span className="text-sm font-medium">{order.exporter.name}</span>
           </div>
-          
+
           <div className="col-span-2 flex items-center space-x-2">
             <Avatar className="h-6 w-6">
               <AvatarImage src={`https://flagcdn.com/w20/${order.origin_port.country_code.toLowerCase()}.png`} />
@@ -162,7 +162,7 @@ const ForwarderOrderCard = ({ order }) => {
             </Avatar>
             <span className="text-sm font-medium">{order.destination_port.port_code}</span>
           </div>
-          
+
           <div className="col-span-2 flex flex-col space-y-1">
             <span className="text-xs text-muted-foreground">Time Left for Bidding</span>
             <span className="text-sm font-medium">
@@ -173,41 +173,46 @@ const ForwarderOrderCard = ({ order }) => {
           </div>
         </div>
       </CardContent>
-      
+
       <Separator />
-      
+
       <CardFooter className="pt-4">
-        <div className="flex w-full items-center justify-between">
+        <div className="flex w-full items-center">
           {footerInfo && (
             <div className="flex items-center space-x-2">
               <footerInfo.icon className="h-4 w-4 text-muted-foreground" />
               <div className="flex flex-col">
                 <span className="text-xs text-muted-foreground">{footerInfo.label}</span>
                 <span className="text-sm font-medium">
-                  {footerInfo.type === 'quote' && <DollarSign className="h-3 w-3 inline mr-1" />}
+                  {footerInfo.type === 'quote' && (
+                    <DollarSign className="h-3 w-3 inline mr-1" />
+                  )}
                   {footerInfo.value}
                 </span>
               </div>
             </div>
           )}
-          
-          <Link href={actionHref} passHref>
-            <Button 
-              variant="secondary" 
-              className={`${footerInfo ? '' : 'w-full'} ${!footerInfo ? 'min-w-[120px]' : 'min-w-[100px]'}`}
-              disabled={isLoading}
-              onClick={handleButtonClick}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                actionText
-              )}
-            </Button>
-          </Link>
+
+          {/* Push button to far right */}
+          <div className="ml-auto">
+            <Link href={actionHref} passHref>
+              <Button
+                variant="secondary"
+                className="min-w-[120px]"
+                disabled={isLoading}
+                onClick={handleButtonClick}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  actionText
+                )}
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardFooter>
     </Card>
