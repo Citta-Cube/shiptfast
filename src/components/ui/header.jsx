@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { useClerk, useUser, useAuth } from '@clerk/nextjs'
 import { Menu, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
   const { signOut } = useClerk()
   const { user, isLoaded } = useUser()
   const { getToken } = useAuth()
+  const fetchedUserIdRef = useRef(null) // Track which user we've fetched data for
   
   // Select the appropriate config based on userType
   const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
@@ -29,10 +31,16 @@ const Header = ({ userType = 'EXPORTER' }) => {
   // Fetch user's company information
   useEffect(() => {
     if (!isLoaded || !user) return
+    
+    // Don't refetch if we already have the data for this user
+    if (fetchedUserIdRef.current === user.id && companyMembership) return
 
     const fetchUserData = async () => {
       try {
-        setLoading(true)
+        // Only show loading on initial fetch, not on refetches
+        if (!companyMembership) {
+          setLoading(true)
+        }
         
         // Get Clerk JWT token for Supabase RLS - skip cache to ensure fresh token
         const supabaseToken = await getToken({ template: 'supabase', skipCache: true })
@@ -70,18 +78,25 @@ const Header = ({ userType = 'EXPORTER' }) => {
 
         if (companyError && companyError.code !== 'PGRST116') {
           console.error('Error fetching company data:', companyError)
+          // Don't clear existing data on error
+          return
         }
 
-        setCompanyMembership(companyData)
+        // Only update if we got valid data
+        if (companyData) {
+          setCompanyMembership(companyData)
+          fetchedUserIdRef.current = user.id // Mark this user as fetched
+        }
       } catch (error) {
         console.error('Error fetching user data:', error)
+        // Don't clear existing data on error
       } finally {
         setLoading(false)
       }
     }
 
     fetchUserData()
-  }, [isLoaded, user, getToken, pathname])
+  }, [isLoaded, user?.id, getToken]) // Removed pathname from dependencies to prevent refetch on navigation
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -96,6 +111,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
   }
 
   const handleProfileClick = () => {
+    setIsNavigating(true)
     router.push('/profile?tab=personal')
   }
 
@@ -104,6 +120,11 @@ const Header = ({ userType = 'EXPORTER' }) => {
     router.push(href)
     // The loading state will be reset when navigation completes or component unmounts
   }
+
+  // Reset navigation state when pathname changes (navigation completed)
+  useEffect(() => {
+    setIsNavigating(false)
+  }, [pathname])
 
   // Get user's first name and last name
   const firstName = user?.firstName || companyMembership?.first_name || ''
@@ -129,14 +150,15 @@ const Header = ({ userType = 'EXPORTER' }) => {
         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
           <nav className="flex flex-col gap-4">
             {config.sidebarNav.map((item, index) => (
-              <a
+              <Link
                 key={index}
                 href={item.href}
-                className="flex items-center gap-2 text-lg font-medium"
+                onClick={() => setIsNavigating(true)}
+                className="flex items-center gap-2 text-lg font-medium hover:text-foreground transition-colors"
               >
                 {item.icon && <item.icon className="h-5 w-5" />}
                 {item.title}
-              </a>
+              </Link>
             ))}
           </nav>
         </SheetContent>
@@ -169,13 +191,14 @@ const Header = ({ userType = 'EXPORTER' }) => {
           
           // Render other items as regular links
           return (
-            <a
+            <Link
               key={index}
               href={item.href}
-              className={`text-sm font-medium ${item.disabled ? 'cursor-not-allowed opacity-80' : 'hover:text-foreground'}`}
+              onClick={() => setIsNavigating(true)}
+              className={`text-sm font-medium ${item.disabled ? 'cursor-not-allowed opacity-80' : 'hover:text-foreground transition-colors'}`}
             >
               {item.title}
-            </a>
+            </Link>
           )
         })}
       </nav>

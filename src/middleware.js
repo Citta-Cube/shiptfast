@@ -13,8 +13,38 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId, getToken } = await auth();  
-  const supabaseToken = userId ? await getToken({ template: "supabase"}) : null;
+  let userId = null;
+  let supabaseToken = null;
+  
+  try {
+    const authResult = await auth();
+    userId = authResult?.userId || null;
+    if (userId) {
+      try {
+        supabaseToken = await authResult.getToken({ template: "supabase"});
+      } catch (tokenError) {
+        // Token generation failed, but we can still proceed without it
+        console.warn("Failed to generate Supabase token in middleware:", tokenError);
+      }
+    }
+  } catch (authError) {
+    // Clerk auth failed - this can happen during navigation transitions
+    // Allow the request to proceed, the page will handle authentication
+    console.warn("Clerk auth error in middleware (likely navigation transition):", authError);
+    // For API routes, we might want to return early, but for pages, let them handle it
+    if (req.nextUrl.pathname.startsWith('/api/')) {
+      return NextResponse.next();
+    }
+    // For non-API routes, redirect to sign in if not a public route
+    const pathname = req.nextUrl.pathname;
+    const isAuthRoute = pathname.startsWith("/auth") || pathname.startsWith("/signin") || pathname.startsWith("/signup");
+    if (!isAuthRoute) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/auth/signin";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
   
   const pathname = req.nextUrl.pathname;
 
