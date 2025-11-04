@@ -1,7 +1,7 @@
 // src/app/api/orders/[id]/route.js
 import { mockOrders } from '@/mockData/detailedOrders';
 import { NextResponse } from 'next/server';
-import { getOrderById, cancelOrder } from '@/data-access/orders';
+import { getOrderById, cancelOrder, voidOrder } from '@/data-access/orders';
 import { processEmailNotifications } from '@/lib/email/processNotifications';
 
 export async function GET(request, { params }) {
@@ -23,9 +23,9 @@ export async function PATCH(request, { params }) {
         const { searchParams } = new URL(request.url);
         const action = searchParams.get('action');
 
-        if (action !== 'cancel') {
+        if (!['cancel', 'void'].includes(action)) {
             return NextResponse.json(
-                { error: 'Invalid action. Supported action: cancel' },
+                { error: 'Invalid action. Supported actions: cancel, void' },
                 { status: 400 }
             );
         }
@@ -39,15 +39,25 @@ export async function PATCH(request, { params }) {
             );
         }
 
-        const cancelledOrder = await cancelOrder(id);
-        // Send email immediately for ORDER_CANCELLED to selected forwarders
-        try {
-            await processEmailNotifications({ types: ['ORDER_CANCELLED'], orderId: id })
-        } catch (e) {
-            console.error('Email dispatch for order cancelled failed:', e)
+        let result;
+        let notificationType;
+
+        if (action === 'cancel') {
+            result = await cancelOrder(id);
+            notificationType = 'ORDER_CANCELLED';
+        } else if (action === 'void') {
+            result = await voidOrder(id);
+            notificationType = 'ORDER_VOIDED';
         }
 
-        return NextResponse.json(cancelledOrder);
+        // Send email immediately for the appropriate notification type
+        try {
+            await processEmailNotifications({ types: [notificationType], orderId: id })
+        } catch (e) {
+            console.error(`Email dispatch for ${notificationType} failed:`, e)
+        }
+
+        return NextResponse.json(result);
         
     } catch (error) {
         console.error('Error cancelling order:', error);
@@ -65,9 +75,16 @@ export async function PATCH(request, { params }) {
                 { status: 400 }
             );
         }
+        
+        if (error.message === 'Order is already voided') {
+            return NextResponse.json(
+                { error: 'Order is already voided' },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json(
-            { error: 'Failed to cancel order' },
+            { error: `Failed to ${action} order` },
             { status: 500 }
         );
     }

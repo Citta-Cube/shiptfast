@@ -8,7 +8,7 @@ import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
 import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import UrgentIndicator from '@/components/dashboard/UrgentIndicator';
 import Link from 'next/link';
-import { DollarSign, Clock, Loader2 } from 'lucide-react';
+import { DollarSign, Clock, Loader2, Truck } from 'lucide-react';
 
 const ForwarderOrderCard = ({ order }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -161,6 +161,17 @@ const ForwarderOrderCard = ({ order }) => {
               <AvatarFallback>{order.destination_port.country_code}</AvatarFallback>
             </Avatar>
             <span className="text-sm font-medium">{order.destination_port.port_code}</span>
+            {order.require_inland_delivery && (
+              <>
+                <span className="text-sm">→</span>
+                <Truck className="h-6 w-6 text-primary" />
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={`https://flagcdn.com/w20/${order.final_destination_country_code?.toLowerCase()}.png`} />
+                  <AvatarFallback>{order.final_destination_country_code}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{order.final_destination_country_code}</span>
+              </>
+            )}
           </div>
 
           <div className="col-span-2 flex flex-col space-y-1">

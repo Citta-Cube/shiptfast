@@ -70,6 +70,10 @@ export async function sendEmailForNotification(n) {
       subject = `Order cancelled: ${orderRef}`
       html = T.orderStatus({ orderReference: orderRef, status: 'CANCELLED', url })
       break
+    case 'ORDER_VOIDED':
+      subject = `Order voided: ${orderRef}`
+      html = T.orderStatus({ orderReference: orderRef, status: 'VOIDED', url })
+      break
     case 'QUOTE_RECEIVED':
       subject = `New quote received for ${orderRef}`
       html = T.quoteReceived({ orderReference: orderRef, forwarderName: n.data?.forwarder_name, amount: n.data?.quote_amount, currency: n.data?.currency, url })
@@ -77,6 +81,10 @@ export async function sendEmailForNotification(n) {
     case 'QUOTE_SELECTED':
       subject = `Your quote was selected for ${orderRef}`
       html = T.quoteSelected({ orderReference: orderRef, url })
+      break
+    case 'ORDER_REASSIGNED':
+      subject = `Order reassigned to you: ${orderRef}`
+      html = T.orderReassigned({ orderReference: orderRef, url })
       break
     case 'QUOTE_CANCELLED':
       subject = `Quote cancelled for ${orderRef}`
@@ -89,7 +97,7 @@ export async function sendEmailForNotification(n) {
       break
   }
 
-  // Send
+  // Send to company email
   await resend.emails.send({
     from,
     to: [companyEmail],

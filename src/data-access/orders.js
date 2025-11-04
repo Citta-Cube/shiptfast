@@ -51,7 +51,11 @@ export async function createOrder(orderData, selectedForwarderIds, documents = [
         note_is_important: orderData.note_is_important || false,
         origin_port_id: orderData.origin_port_id,
         destination_port_id: orderData.destination_port_id,
-        order_details: orderData.order_details
+        order_details: orderData.order_details,
+        // New inland delivery fields
+        require_inland_delivery: orderData.require_inland_delivery ?? false,
+        final_delivery_address: orderData.final_delivery_address ?? null,
+        final_destination_country_code: orderData.final_destination_country_code ?? null
       },
       forwarder_ids: selectedForwarderIds,
       documents_data: documents.map(doc => ({
@@ -178,6 +182,52 @@ export async function cancelOrder(orderId) {
     return data;
   } catch (error) {
     console.error('Error cancelling order:', error);
+    throw error;
+  }
+}
+
+export async function voidOrder(orderId) {
+  try {
+    // TODO: Check if user has permission to void order from user session 
+    const supabase = createClient();
+    const { data: existingOrder, error: checkError } = await supabase
+      .from('orders')
+      .select('id, status')
+      .eq('id', orderId)
+      .single();
+
+    if (checkError) throw checkError;
+    if (!existingOrder) throw new Error('Order not found');
+    if (existingOrder.status === 'VOIDED') throw new Error('Order is already voided');
+
+    // Proceed with voiding
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ 
+        status: 'VOIDED',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Update any active quotes to voided
+    const { error: quotesError } = await supabase
+      .from('quotes')
+      .update({ 
+        status: 'VOIDED',
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', orderId)
+      .eq('status', 'ACTIVE');
+
+    if (quotesError) throw quotesError;
+
+    return data;
+  } catch (error) {
+    console.error('Error voiding order:', error);
     throw error;
   }
 }
