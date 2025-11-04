@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon, MoreHorizontal, Edit, Trash2 } from "lucide-react"
+import { CalendarIcon, BuildingIcon, GlobeIcon, PhoneIcon, MailIcon, BriefcaseIcon, CheckCircleIcon, UsersIcon, MoreHorizontal, Edit, Trash2, Star } from "lucide-react"
 import { format } from 'date-fns'
 import { reconcileUserInvitations } from '@/app/auth/actions'
 import InviteMemberDialog from '@/components/profile/InviteMemberDialog'
@@ -32,15 +32,15 @@ export default function ProfilePage() {
 
   // Handle member updates
   const handleMemberUpdated = (updatedMember) => {
-    setCompanyMembers(prevMembers => 
-      prevMembers.map(member => 
+    setCompanyMembers(prevMembers =>
+      prevMembers.map(member =>
         member.id === updatedMember.id ? updatedMember : member
       )
     )
   }
 
   const handleMemberDeleted = (deletedMemberId) => {
-    setCompanyMembers(prevMembers => 
+    setCompanyMembers(prevMembers =>
       prevMembers.filter(member => member.id !== deletedMemberId)
     )
   }
@@ -144,6 +144,8 @@ export default function ProfilePage() {
           } else {
             setCompanyMembers(members || [])
           }
+
+          // Overall rating is read from companies.average_rating and companies.total_ratings
         }
       } catch (error) {
         console.error('Error fetching user data:', error)
@@ -367,27 +369,44 @@ export default function ProfilePage() {
                         <h3 className="text-sm font-medium mb-1">VAT Number</h3>
                         <p className="text-sm">{companyMembership.companies.vat_number || 'Not specified'}</p>
                       </div>
-                      <div className="col-span-2">
+                      <div>
                         <h3 className="text-sm font-medium mb-1">Address</h3>
                         <p className="text-sm">{companyMembership.companies.address || 'Not specified'}</p>
                       </div>
+
+                      {/* Ratings (overall) */}
+                      <div>
+                        <h3 className="text-sm font-medium mb-1">Ratings</h3>
+                        {companyMembership.companies.average_rating ? (
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`h-4 w-4 ${
+                                  star <= Math.round(Number(companyMembership.companies.average_rating))
+                                    ? 'text-yellow-400 fill-current'
+                                    : 'text-gray-300'
+                                }`}
+                              />
+                            ))}
+                            <span className="ml-2 text-sm font-medium">
+                              {Number(companyMembership.companies.average_rating).toFixed(1)}/5 {companyMembership.companies.total_ratings ? `( ${companyMembership.companies.total_ratings} ratings )` : ''}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">No ratings yet</div>
+                        )}
+                      </div>
+
                       {companyMembership.companies.description && (
                         <div className="col-span-2">
                           <h3 className="text-sm font-medium mb-1">Description</h3>
                           <p className="text-sm">{companyMembership.companies.description}</p>
                         </div>
                       )}
-                      {companyMembership.companies.average_rating && (
-                        <div>
-                          <h3 className="text-sm font-medium mb-1">Average Rating</h3>
-                          <div className="flex items-center">
-                            <span className="text-sm mr-1">{companyMembership.companies.average_rating}</span>
-                            <span className="text-yellow-500">★</span>
-                          </div>
-                        </div>
-                      )}
+                      
                       {companyCreatedAt && (
-                        <div>
+                        <div className="col-span-2">
                           <h3 className="text-sm font-medium mb-1">Established</h3>
                           <p className="text-sm">{companyCreatedAt}</p>
                         </div>
@@ -428,7 +447,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </CardHeader>
-                
+
                   <CardContent>
                     {companyMembers.length > 0 ? (
                       <Table>
@@ -448,13 +467,13 @@ export default function ProfilePage() {
                                 <div className="flex items-center space-x-3">
                                   <Avatar className="h-8 w-8">
                                     <AvatarFallback className="text-xs">
-                                      {member.first_name && member.last_name 
+                                      {member.first_name && member.last_name
                                         ? `${member.first_name[0]}${member.last_name[0]}`
                                         : member.email?.charAt(0).toUpperCase() || '?'}
                                     </AvatarFallback>
                                   </Avatar>
                                   <span>
-                                    {member.first_name && member.last_name 
+                                    {member.first_name && member.last_name
                                       ? `${member.first_name} ${member.last_name}`
                                       : 'No name provided'}
                                   </span>
@@ -510,7 +529,7 @@ export default function ProfilePage() {
                         <UsersIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-medium mb-2">No Team Members</h3>
                         <p className="text-sm text-muted-foreground">
-                          {(companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER') 
+                          {(companyMembership?.role === 'ADMIN' || companyMembership?.role === 'MANAGER')
                             ? 'Start building your team by inviting members.'
                             : 'No other team members found.'}
                         </p>

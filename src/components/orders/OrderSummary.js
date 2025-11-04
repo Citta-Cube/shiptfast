@@ -23,9 +23,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const OrderSummary = ({ order }) => {
+const OrderSummary = ({ order, canCancel = true, userMembership = null }) => {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
+  const [isChanging, setIsChanging] = useState(false);
+  const [reason, setReason] = useState('');
 
   const handleCancelOrder = async () => {
     try {
@@ -79,7 +81,8 @@ const OrderSummary = ({ order }) => {
             </Badge>
           )}
         </div>
-        {!['cancelled', 'closed'].includes(order.status.toLowerCase()) && (
+        <div className="flex items-center gap-2">
+  {canCancel && !['cancelled', 'closed', 'reassign', 'voided'].includes(order.status.toLowerCase()) && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -118,6 +121,102 @@ const OrderSummary = ({ order }) => {
             </AlertDialogContent>
           </AlertDialog>
         )}
+
+        {/* Admin-only status change options for CLOSED orders */}
+        {order.status === 'CLOSED' && userMembership?.companies?.type === 'EXPORTER' && userMembership?.role === 'ADMIN' && userMembership?.companies?.id === order.exporter_id && (
+          <>
+            {/* REASSIGN */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isChanging}>Reassign</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reassign Order</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will set status to REASSIGN, withdraw the selected quote, reopen other quotes, and remove ratings and final invoice.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reason (optional)</label>
+                  <textarea className="w-full border rounded p-2 text-sm" rows={3} placeholder="Reason for reassigning" value={reason} onChange={(e) => setReason(e.target.value)} />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        setIsChanging(true)
+                        const res = await fetch(`/api/orders/${order.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'REASSIGN', reason }) })
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}))
+                          throw new Error(err.error || 'Failed to reassign')
+                        }
+                        toast.success('Order reassigned')
+                        setReason('')
+                        router.refresh()
+                      } catch (e) {
+                        toast.error('Error', { description: e.message })
+                      } finally {
+                        setIsChanging(false)
+                      }
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700"
+                    disabled={isChanging}
+                  >
+                    {isChanging ? 'Working...' : 'Confirm Reassign'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* VOIDED */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={isChanging}>Void</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Void Order</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will set status to VOIDED and revoke all quotes, remove ratings and final invoice. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reason (optional)</label>
+                  <textarea className="w-full border rounded p-2 text-sm" rows={3} placeholder="Reason for voiding" value={reason} onChange={(e) => setReason(e.target.value)} />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        setIsChanging(true)
+                        const res = await fetch(`/api/orders/${order.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'VOIDED', reason }) })
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}))
+                          throw new Error(err.error || 'Failed to void order')
+                        }
+                        toast.success('Order voided')
+                        setReason('')
+                        router.refresh()
+                      } catch (e) {
+                        toast.error('Error', { description: e.message })
+                      } finally {
+                        setIsChanging(false)
+                      }
+                    }}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={isChanging}
+                  >
+                    {isChanging ? 'Working...' : 'Confirm Void'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
+        </div>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-4">
         <div>

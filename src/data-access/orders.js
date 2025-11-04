@@ -153,6 +153,9 @@ export async function cancelOrder(orderId) {
     if (checkError) throw checkError;
     if (!existingOrder) throw new Error('Order not found');
     if (existingOrder.status === 'CANCELLED') throw new Error('Order is already cancelled');
+    if (existingOrder.status === 'REASSIGN' || existingOrder.status === 'VOIDED') {
+      throw new Error('Order cannot be cancelled in its current status');
+    }
 
     // Proceed with cancellation
     const { data, error } = await supabase
@@ -167,15 +170,18 @@ export async function cancelOrder(orderId) {
 
     if (error) throw error;
 
-    // Update any active quotes to cancelled
+
+    // Update all quotes for this order:
+    // - If status is 'WITHDRAWN', leave as is
+    // - Otherwise, set to 'REVOKED'
     const { error: quotesError } = await supabase
       .from('quotes')
       .update({ 
-        status: 'CANCELLED',
+        status: 'REVOKED',
         updated_at: new Date().toISOString()
       })
       .eq('order_id', orderId)
-      .eq('status', 'ACTIVE');
+      .not('status', 'in', '(WITHDRAWN)');
 
     if (quotesError) throw quotesError;
 

@@ -348,3 +348,35 @@ export async function getExistingRating(orderId, raterCompanyId) {
     throw error;
   }
 }
+
+/**
+ * Get all ratings received by a company
+ * @param {string} companyId - The company ID to get ratings for
+ * @returns {Promise<Array>} - Array of ratings
+ */
+export async function getCompanyRatings(companyId) {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('company_ratings')
+      .select(`
+        *,
+        rater_company:rater_company_id (
+          id,
+          name,
+          type
+        )
+      `)
+      .eq('ratee_company_id', companyId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching company ratings:', error);
+    throw error;
+  }
+}

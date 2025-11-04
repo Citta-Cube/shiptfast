@@ -5,6 +5,7 @@ import OrderSummary from '@/components/orders/OrderSummary';
 import DocumentSection from '@/components/orders/DocumentSection';
 import QuoteManagementSection from '@/components/forwarders/QuoteManagementSection';
 import OrderMessagingSheet from '@/components/orders/OrderMessagingSheet';
+import StatusHistory from '@/components/orders/StatusHistory';
 
 const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
   // Extract shipment type and load type from order
@@ -31,8 +32,8 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Order Summary - reusing existing component */}
-        <OrderSummary order={order} />
+        {/* Order Summary - forwarders cannot cancel orders */}
+        <OrderSummary order={order} canCancel={false} />
         
         {/* Document Section - reusing existing component */}
         <DocumentSection
@@ -42,6 +43,12 @@ const ForwarderOrderDetailContent = ({ order, documents, quotes }) => {
           canUpload={false}
           canDelete={false}
         />
+
+        {Array.isArray(order.status_history) && order.status_history.length > 0 && (
+          <div className="lg:col-span-2">
+            <StatusHistory history={order.status_history} />
+          </div>
+        )}
         
         {/* Final Invoice controls are shown inside the selected quote area above */}
 
