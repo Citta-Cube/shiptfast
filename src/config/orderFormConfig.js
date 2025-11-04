@@ -1,4 +1,10 @@
 import { Plane, Ship, Container, Boxes } from 'lucide-react';
+import countryCodes from '@/lib/Countries/countrycode.json';
+
+// Build country options from JSON (label = country name, value = ISO code)
+const countryOptions = Object.entries(countryCodes)
+  .map(([name, code]) => ({ value: code, label: name }))
+  .sort((a, b) => a.label.localeCompare(b.label));
 
 export const formConfig = ({ orderData }) => [
     { section: 'Basic Info', fields: [
@@ -86,6 +92,13 @@ export const formConfig = ({ orderData }) => [
       { id: 'originPort', label: 'Origin Port', type: 'portSelect', shipmentType: orderData.shipmentType },
       { id: 'destinationPort', label: 'Destination Port', type: 'portSelect', shipmentType: orderData.shipmentType },
     ]},
+  { section: 'Inland Delivery', fields: [
+    { id: 'requireInlandDelivery', label: 'Need In Land Delivery', type: 'checkbox' },
+    { id: 'finalDeliveryAddress', label: 'Delivery Address', type: 'textarea', placeholder: 'Enter delivery address', showIf: { requireInlandDelivery: true } },
+    { id: 'finalDeliveryCity', label: 'City', type: 'input', placeholder: 'Enter city', showIf: { requireInlandDelivery: true } },
+    { id: 'finalDeliveryPostalCode', label: 'Postal Code', type: 'input', placeholder: 'Enter postal code', showIf: { requireInlandDelivery: true } },
+    { id: 'finalDeliveryCountry', label: 'Country', type: 'select', options: countryOptions, showIf: { requireInlandDelivery: true } },
+  ]},
     { section: 'Shipment Details', fields: [
         { id: 'cargoType', label: 'Cargo Type', type: 'select', options: [
             { value: "loose", label: "Loose" },
@@ -101,7 +114,6 @@ export const formConfig = ({ orderData }) => [
             { value: "40HC", label: "40' HC" },
         ], showIf: { shipmentType: 'SEA', loadType: 'FCL' } },
         { id: 'palletCBM', label: 'Pallet CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'SEA', loadType: 'LCL' } },
-        { id: 'cargoCBM', label: 'Cargo CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'SEA', loadType: 'LCL' } },
-        { id: 'deliveryAddress', label: 'Delivery Address', type: 'textarea', placeholder: 'Enter delivery address', showIf: { incoterm: ['DDP', 'DAP', 'CPT', 'CIP', 'DPU'] } },
+    { id: 'cargoCBM', label: 'Cargo CBM', type: 'input', inputType: 'number', showIf: { shipmentType: 'SEA', loadType: 'LCL' } },
     ]},
 ];

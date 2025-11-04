@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useUser } from '@clerk/nextjs'
+import { useUser, useAuth } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 import Sidebar from '@/components/ui/sidebar'
 import Header from '@/components/ui/header'
 
 const DashboardLayout = ({ children }) => {
   const { user, isLoaded } = useUser()
+  const { getToken } = useAuth()
   const [userType, setUserType] = useState('EXPORTER')
   const [loading, setLoading] = useState(true)
 
@@ -16,7 +17,9 @@ const DashboardLayout = ({ children }) => {
 
     const fetchUserType = async () => {
       try {
-        const supabase = createClient()
+        // Get Clerk JWT token for Supabase RLS
+        const supabaseToken = await getToken({ template: 'supabase' })
+        const supabase = createClient(supabaseToken)
         
         // Fetch user's company information to determine user type
         const { data: companyData, error: companyError } = await supabase
@@ -46,7 +49,7 @@ const DashboardLayout = ({ children }) => {
     }
 
     fetchUserType()
-  }, [isLoaded, user])
+  }, [isLoaded, user, getToken])
 
   if (!isLoaded || loading) {
     return (

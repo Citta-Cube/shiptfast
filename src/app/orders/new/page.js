@@ -36,7 +36,13 @@ const NewOrderPage = () => {
     containerType: '',
     palletCBM: '',
     cargoCBM: '',
-    deliveryAddress: '',
+  deliveryAddress: '',
+  // Inland delivery fields
+  requireInlandDelivery: false,
+  finalDeliveryAddress: '',
+  finalDeliveryCity: '',
+  finalDeliveryPostalCode: '',
+  finalDeliveryCountry: '',
     selectedForwarders: [],
     documents: [],
     palletizedCargo: null,
@@ -99,9 +105,15 @@ const NewOrderPage = () => {
       // Add common fields
       if (orderData.dimensions) orderDetails.dimensions = orderData.dimensions;
       if (orderData.cargoType) orderDetails.cargoType = orderData.cargoType;
-      if (['DDP', 'DAP', 'CPT', 'CIP', 'DPU'].includes(orderData.incoterm)) {
-        orderDetails.deliveryAddress = orderData.deliveryAddress;
-      }
+
+      // Build inland delivery payload
+      const finalDeliveryAddress = orderData.requireInlandDelivery
+        ? {
+            address: orderData.finalDeliveryAddress || null,
+            city: orderData.finalDeliveryCity || null,
+            postal_code: orderData.finalDeliveryPostalCode || null,
+          }
+        : null;
 
       // Update the orderData structure to match the API expectations
       formData.append('orderData', JSON.stringify({
@@ -117,7 +129,11 @@ const NewOrderPage = () => {
         note_is_important: orderData.noteIsImportant || false,
         origin_port_id: orderData.originPort,
         destination_port_id: orderData.destinationPort,
-        order_details: orderDetails
+        order_details: orderDetails,
+        // New inland delivery fields
+        require_inland_delivery: !!orderData.requireInlandDelivery,
+        final_delivery_address: finalDeliveryAddress,
+        final_destination_country_code: orderData.requireInlandDelivery ? (orderData.finalDeliveryCountry || null) : null,
       }));
 
       formData.append('selectedForwarderIds', JSON.stringify(orderData.selectedForwarders));

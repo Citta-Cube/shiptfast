@@ -52,7 +52,7 @@ export async function PATCH(request, { params }) {
 
     // DB triggers create the notification. Send email immediately for this quote.
     try {
-      await processEmailNotifications({ types: ['QUOTE_SELECTED'], orderId, quoteId });
+      await processEmailNotifications({ types: ['QUOTE_SELECTED', 'ORDER_REASSIGNED'], orderId, quoteId });
     } catch (notificationError) {
       console.error('Email dispatch for quote selected failed:', notificationError);
       // Do not fail the request if emails fail

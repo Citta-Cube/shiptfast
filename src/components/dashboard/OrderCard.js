@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { calculateTimeLeft, formatDate } from '@/lib/helpers/formatDate';
 import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashboard/OrderMetadata';
 import UrgentIndicator from './UrgentIndicator';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Truck } from 'lucide-react';
 import Link from 'next/link';
 
 const OrderCard = ({ order }) => {
@@ -59,6 +59,17 @@ const OrderCard = ({ order }) => {
               <AvatarFallback>{order.destination_port.country_code}</AvatarFallback>
             </Avatar>
             <span className="text-sm font-medium">{order.destination_port.port_code}</span>
+            {order.require_inland_delivery && (
+              <>
+                <span className="text-sm">→</span>
+                <Truck className="h-6 w-6 text-primary" />
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={`https://flagcdn.com/w20/${order.final_destination_country_code?.toLowerCase()}.png`} />
+                  <AvatarFallback>{order.final_destination_country_code}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{order.final_destination_country_code}</span>
+              </>
+            )}
           </div>
           <div className="col-span-2 flex flex-col space-y-1">
             <span className="text-xs text-muted-foreground">Time Left for Bidding</span>

@@ -23,6 +23,10 @@ export async function createCompany(company) {
 }
 
 export async function getUserCompanyMembership(clerkUserId) {  
+  // const supabase = createClient();
+  // const { data, error } = await supabase.rpc('debug_jwt');
+  // console.log('JWT payload from DB:', data);
+
   const { data, error } = await createClient()
     .from('company_members')
     .select(`
