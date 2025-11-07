@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { deleteDocument } from '@/data-access/document';
+import { createAdminClient } from '@/lib/supabase/admin';
 // import { auth } from '@/lib/auth';
 
 export async function DELETE(request, { params }) {
@@ -10,7 +11,8 @@ export async function DELETE(request, { params }) {
     // }
     // TODO: Check if user has permission to delete document from user session 
 
-    await deleteDocument(params.id);
+  const admin = createAdminClient();
+  await deleteDocument(params.id, admin);
     return NextResponse.json({ 
       success: true, 
       message: 'Document and associated files deleted successfully' 
