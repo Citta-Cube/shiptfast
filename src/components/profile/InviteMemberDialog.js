@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +21,7 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
 export default function InviteMemberDialog({ companyId, onInviteSent }) {
+  const { getToken } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     firstName: '',
@@ -30,12 +32,15 @@ export default function InviteMemberDialog({ companyId, onInviteSent }) {
   const [isLoading, setIsLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [roles, setRoles] = useState([])
-  const supabase = createClient()
 
   // Fetch enum values from Supabase
   useEffect(() => {
     const fetchRoles = async () => {
       try {
+        // Get Clerk JWT token for Supabase RLS
+        const supabaseToken = await getToken({ template: 'supabase' })
+        const supabase = createClient(supabaseToken)
+        
         const { data, error } = await supabase
           .rpc('get_enum_values', { enum_name: 'company_role' })
         
@@ -56,7 +61,7 @@ export default function InviteMemberDialog({ companyId, onInviteSent }) {
     }
 
     fetchRoles()
-  }, [supabase])
+  }, [getToken])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

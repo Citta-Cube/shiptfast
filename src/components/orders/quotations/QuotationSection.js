@@ -27,7 +27,7 @@ const EmptyState = () => (
   </div>
 );
 
-const QuotationSection = ({ order, quotes, onSelectAgent, userRole }) => {
+const QuotationSection = ({ order, quotes, onSelectAgent, userRole, userMembership }) => {
   const {
     sortedAndFilteredQuotations,
     sortBy,
@@ -132,7 +132,8 @@ const QuotationSection = ({ order, quotes, onSelectAgent, userRole }) => {
             <QuotationTable 
               quotations={filteredAvailableQuotes} 
               order={order} 
-              onSelectAgent={onSelectAgent} 
+              onSelectAgent={onSelectAgent}
+              userMembership={userMembership}
             />
           ) : (
             <EmptyState />

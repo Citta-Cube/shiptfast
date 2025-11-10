@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createOrder } from '@/data-access/orders';
 import { uploadDocuments } from '@/data-access/document';
 import { processEmailNotifications } from '@/lib/email/processNotifications';
 
 const supabase = createClient();
+const admin = (() => {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
+})();
 
 export async function POST(req) {
   try {
@@ -35,7 +43,8 @@ export async function POST(req) {
       files,
       documentMetadata,
       'ORDER',
-      `companies/${orderData.exporter_id}/orders/${orderData.reference_number}`
+      `companies/${orderData.exporter_id}/orders/${orderData.reference_number}`,
+      admin || supabase
     );
 
     try {
@@ -65,7 +74,8 @@ export async function POST(req) {
     } catch (error) {
       // If order creation fails, clean up the uploaded files
       if (uploadedPaths?.length > 0) {
-        await supabase.storage
+        const client = admin || supabase;
+        await client.storage
           .from('documents')
           .remove(uploadedPaths);
       }

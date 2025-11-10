@@ -6,6 +6,7 @@ import OrderSummary from './OrderSummary';
 import DocumentSection from './DocumentSection';
 import QuotationSection from './quotations/QuotationSection';
 import OrderMessagingSheet from './OrderMessagingSheet';
+import StatusHistory from './StatusHistory';
 
 // Mocked API function
 const fetchHistoricalData = (startPort, endPort) => {
@@ -20,7 +21,7 @@ const fetchHistoricalData = (startPort, endPort) => {
   });
 };
 
-const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
+const OrderDetailContent = ({ order, documents, quotes, userRole, userMembership }) => {
   const { user } = useUser();
   const [currentOrder, setCurrentOrder] = useState(order);
   const [historicalData, setHistoricalData] = useState(null);
@@ -84,7 +85,7 @@ const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <OrderSummary order={order} onCancelOrder={handleCancelOrder} />
+        <OrderSummary order={order} canCancel={true} userMembership={userMembership} />
         <DocumentSection
           documents={documents}
           entityId={currentOrder.id}
@@ -92,11 +93,18 @@ const OrderDetailContent = ({ order, documents, quotes, userRole }) => {
           canUpload={true}
           canDelete={true}
         />
+        {/* Status history (admin interventions) */}
+        {Array.isArray(order.status_history) && order.status_history.length > 0 && (
+          <div className="md:col-span-2">
+            <StatusHistory history={order.status_history} />
+          </div>
+        )}
         <QuotationSection 
           order={order}
           quotes={quotes}
           onSelectAgent={handleSelectAgent}
           userRole={userRole}
+          userMembership={userMembership}
         />
         {/* <HistoricalPricingChart
           historicalData={historicalData}

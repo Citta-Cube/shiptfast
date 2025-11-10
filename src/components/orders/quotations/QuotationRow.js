@@ -40,15 +40,32 @@ const generatePriceHistory = (currentPrice, quoteId) => {
     return history;
 };
 
-const QuotationRow = ({ quotation, order, onSelectAgent }) => {
+
+const QuotationRow = ({ quotation, order, onSelectAgent, userMembership }) => {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const priceHistory = generatePriceHistory(quotation.net_freight_cost, quotation.id);
-  const previousPrice = priceHistory[priceHistory.length - 2].price;
+  // Prefer real amendment history if present
+  let priceHistory = [];
+  if (quotation.quote_amendments && Array.isArray(quotation.quote_amendments) && quotation.quote_amendments.length > 0) {
+    // Sort by created_at ascending, and include the original price as the first entry
+    const amendments = [...quotation.quote_amendments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // The original price is the price before the first amendment
+    const originalPrice = amendments[0].old_price;
+    const originalDate = amendments[0].created_at ? new Date(new Date(amendments[0].created_at).getTime() - 1000 * 60) : null;
+    if (originalPrice && originalDate) {
+      priceHistory.push({ date: originalDate.toISOString().split('T')[0], price: originalPrice });
+    }
+    amendments.forEach(amendment => {
+      priceHistory.push({ date: amendment.created_at.split('T')[0], price: amendment.new_price });
+    });
+  } else {
+    priceHistory = generatePriceHistory(quotation.net_freight_cost, quotation.id);
+  }
+  const previousPrice = priceHistory.length > 1 ? priceHistory[priceHistory.length - 2].price : quotation.net_freight_cost;
   const priceChange = ((quotation.net_freight_cost - previousPrice) / previousPrice) * 100;
 
   const handleSelectQuote = async () => {
@@ -162,7 +179,9 @@ const QuotationRow = ({ quotation, order, onSelectAgent }) => {
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
-            {order.status === 'PENDING' && quotation.status === 'ACTIVE' && (
+            {((order.status === 'PENDING') ||
+              (order.status === 'REASSIGN' && userMembership?.companies?.type === 'EXPORTER' && userMembership?.role === 'ADMIN' && userMembership?.companies?.id === order.exporter_id))
+              && quotation.status === 'ACTIVE' && (
               <Button 
                 onClick={() => setShowConfirmDialog(true)}
                 size="sm"

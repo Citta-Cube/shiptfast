@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 
+// Default SSR client; for privileged operations pass an admin client into functions
 const supabase = createClient();
 
 export async function getDocumentById(id) {
@@ -13,8 +14,9 @@ export async function getDocumentById(id) {
   return data;
 }
 
-export async function createDocument(document) {
-  const { data, error } = await supabase
+export async function createDocument(document, client = null) {
+  const sb = client || supabase;
+  const { data, error } = await sb
     .from('documents')
     .insert(document)
     .select()
@@ -42,8 +44,9 @@ export async function getDocumentsByOrder(orderId) {
  * @param {string} [customPath] - Optional custom storage path prefix
  * @returns {Promise<Array>} Array of processed document objects
  */
-export async function uploadDocuments(files, documentMetadata = [], entityType, customPath = '') {
+export async function uploadDocuments(files, documentMetadata = [], entityType, customPath = '', client = null) {
   try {
+    const sb = client || supabase;
     const documents = await Promise.all(
       files.map(async (file, index) => {
         const metadata = documentMetadata[index] || {};
@@ -55,7 +58,7 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
         // Final storage path: <baseDir>/<uuid>/<uuid.ext>
         const filePath = `${baseDir}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await sb.storage
           .from('documents')
           .upload(filePath, file, {
             cacheControl: '3600',
@@ -66,7 +69,7 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
           throw new Error(`Failed to upload document: ${uploadError.message}`);
         }
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = sb.storage
           .from('documents')
           .getPublicUrl(filePath);
 
@@ -89,7 +92,8 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
     return { documents, uploadedPaths: documents.map(doc => doc.metadata.storagePath) };
   } catch (error) {
     if (error.uploadedPaths?.length > 0) {
-      await supabase.storage.from('documents').remove(error.uploadedPaths);
+      const sb = client || supabase;
+      await sb.storage.from('documents').remove(error.uploadedPaths);
     }
     throw error;
   }
@@ -116,9 +120,10 @@ function extractStoragePathFromUrl(fileUrl) {
  * Deletes a document + its file from Supabase
  * @param {string} id - document UUID
  */
-export async function deleteDocument(id) {
+export async function deleteDocument(id, client = null) {
+  const sb = client || supabase;
   //  Get document row
-  const { data: document, error: fetchError } = await supabase
+  const { data: document, error: fetchError } = await sb
     .from('documents')
     .select('metadata, file_url')
     .eq('id', id)
@@ -140,7 +145,7 @@ export async function deleteDocument(id) {
   }
   
   // Delete file from storage
-  const { error: storageError } = await supabase.storage
+  const { error: storageError } = await sb.storage
     .from('documents')
     .remove([storagePath]);
   
@@ -149,7 +154,7 @@ export async function deleteDocument(id) {
   }
 
   // Delete DB record
-  const { error: dbError } = await supabase
+  const { error: dbError } = await sb
     .from('documents')
     .delete()
     .eq('id', id);

@@ -33,8 +33,14 @@ export async function GET() {
       .eq('is_active', true)
       .single();
 
+    // Handle case where no membership found (PGRST116)
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'No active company membership found' }, { status: 404 });
+      }
+      throw error;
+    }
 
-    if (error) throw error;
     if (!membership?.companies) {
       return NextResponse.json({ error: 'No active company' }, { status: 404 });
     }
