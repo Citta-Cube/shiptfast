@@ -4,6 +4,8 @@ import {
   activateForwarder, 
   deactivateForwarder 
 } from '@/data-access/forwarderRelationships';
+import { auth } from '@clerk/nextjs/server';
+import { getUserCompanyMembership } from '@/data-access/companies';
 
 /**
  * PATCH /api/freight-forwarders/[id]/relationship
@@ -11,11 +13,28 @@ import {
  */
 export async function PATCH(request, { params }) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get user's company membership to get exporterId
+    const membership = await getUserCompanyMembership(userId);
+    
+    if (!membership || !membership.companies) {
+      return NextResponse.json(
+        { error: 'User company membership not found' },
+        { status: 400 }
+      );
+    }
+
+    const exporterId = membership.companies.id;
     const { id: forwarderId } = params;
     const { action, reason } = await request.json();
-    
-    // TODO: Get exporterId from authenticated session
-    const exporterId = 'e0912188-4fbd-415e-b5a7-19b35cfbab42';
 
     let result;
     

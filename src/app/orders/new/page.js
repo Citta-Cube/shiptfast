@@ -46,12 +46,36 @@ const NewOrderPage = () => {
     selectedForwarders: [],
     documents: [],
     palletizedCargo: null,
-    exporterId: 'e0912188-4fbd-415e-b5a7-19b35cfbab42'
+    exporterId: null
   });
   const [freightForwarders, setFreightForwarders] = useState([]);
   const [isLoadingForwarders, setIsLoadingForwarders] = useState(false);
 
   const router = useRouter();
+
+  // Fetch exporterId from user session
+  useEffect(() => {
+    const fetchExporterId = async () => {
+      try {
+        const response = await fetch('/api/me');
+        if (!response.ok) {
+          throw new Error('Failed to fetch user info');
+        }
+        const userInfo = await response.json();
+        if (userInfo.companyId) {
+          setOrderData(prev => ({
+            ...prev,
+            exporterId: userInfo.companyId
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching exporter ID:', error);
+        toast.error('Failed to load user information');
+      }
+    };
+
+    fetchExporterId();
+  }, []);
 
   const handleInputChange = (field, value) => {
     if (field === 'isUrgent') {
@@ -115,10 +139,16 @@ const NewOrderPage = () => {
           }
         : null;
 
+      // Validate exporterId is available
+      if (!orderData.exporterId) {
+        toast.error("User company information not available. Please refresh the page.");
+        return;
+      }
+
       // Update the orderData structure to match the API expectations
       formData.append('orderData', JSON.stringify({
         reference_number: orderData.orderNumber,
-        exporter_id: 'e0912188-4fbd-415e-b5a7-19b35cfbab42', // Make sure this is available from user context
+        exporter_id: orderData.exporterId,
         shipment_type: orderData.shipmentType,
         load_type: orderData.loadType,
         incoterm: orderData.incoterm,
