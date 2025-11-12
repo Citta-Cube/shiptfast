@@ -1,7 +1,7 @@
 // src/app/api/orders/[id]/route.js
 import { mockOrders } from '@/mockData/detailedOrders';
 import { NextResponse } from 'next/server';
-import { getOrderById, cancelOrder } from '@/data-access/orders';
+import { getOrderById, cancelOrder, voidOrder } from '@/data-access/orders';
 import { processEmailNotifications } from '@/lib/email/processNotifications';
 import { createClient } from '@/lib/supabase/server';
 
@@ -68,7 +68,7 @@ export async function PATCH(request, { params }) {
 
     // Helper function to rollback order cancellation
     const rollbackCancellation = async () => {
-        if (!orderCancelled) return; // Nothing to rollback
+        if (!orderCancelled) return;
         
         try {
             const supabase = createClient();
@@ -136,7 +136,7 @@ export async function PATCH(request, { params }) {
         
         orderCancelled = true; // Mark that cancellation succeeded
         
-        // Step 2: Send email notifications - if this fails, we need to rollback
+        // Send email notifications - if this fails, we need to rollback
         let emailResult;
         try {
             emailResult = await processEmailNotifications({ types: ['ORDER_CANCELLED'], orderId: id });
@@ -162,6 +162,25 @@ export async function PATCH(request, { params }) {
 
         // Both operations succeeded
         return NextResponse.json(cancelledOrder);
+        let result;
+        let notificationType;
+
+        if (action === 'cancel') {
+            result = await cancelOrder(id);
+            notificationType = 'ORDER_CANCELLED';
+        } else if (action === 'void') {
+            result = await voidOrder(id);
+            notificationType = 'ORDER_VOIDED';
+        }
+
+        // Send email immediately for the appropriate notification type
+        try {
+            await processEmailNotifications({ types: [notificationType], orderId: id })
+        } catch (e) {
+            console.error(`Email dispatch for ${notificationType} failed:`, e)
+        }
+
+        return NextResponse.json(result);
         
     } catch (error) {
         console.error('Error cancelling order:', error);
@@ -177,7 +196,7 @@ export async function PATCH(request, { params }) {
         
         // If order was cancelled but we hit an error, rollback
         if (orderCancelled || actuallyCancelled) {
-            orderCancelled = true; // Ensure rollback happens
+            orderCancelled = true;
             await rollbackCancellation();
             return NextResponse.json(
                 { 
@@ -202,12 +221,20 @@ export async function PATCH(request, { params }) {
                 { status: 400 }
             );
         }
+        
+        if (error.message === 'Order is already voided') {
+            return NextResponse.json(
+                { error: 'Order is already voided' },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json(
             { 
                 error: 'Failed to cancel order',
                 details: error.message 
             },
+            { error: `Failed to ${action} order` },
             { status: 500 }
         );
     }
