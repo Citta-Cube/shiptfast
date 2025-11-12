@@ -1,6 +1,8 @@
 // src/app/api/freight-forwarders/route.js
 import { getForwardersByExporter } from '@/data-access/freightForwarders';
 import { NextResponse } from 'next/server';
+import { getCurrentUserId } from '@/data-access/users';
+import { getUserCompanyMembership } from '@/data-access/companies';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +13,18 @@ export async function GET(request) {
     const services = searchParams.get('services');
     const search = searchParams.get('search');
     const sort = searchParams.get('sort');
-    // TODO: get exporterId from user session
-    const exporterId = 'e0912188-4fbd-415e-b5a7-19b35cfbab42';
+    // Determine exporter company from Clerk user membership
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const membership = await getUserCompanyMembership(userId);
+    const companyType = membership?.companies?.type;
+    const exporterId = companyType === 'EXPORTER' ? membership?.companies?.id : null;
 
     if (!exporterId) {
       return NextResponse.json(
@@ -47,9 +59,9 @@ export async function GET(request) {
     }
 
     // Apply sorting
-    if (sort === 'asc') {
+    if (sort === 'asc' || sort === 'rating_asc') {
       forwarders.sort((a, b) => (a.average_rating || 0) - (b.average_rating || 0));
-    } else if (sort === 'desc') {
+    } else if (sort === 'desc' || sort === 'rating_desc') {
       forwarders.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
     }
 

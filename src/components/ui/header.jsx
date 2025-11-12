@@ -46,13 +46,11 @@ const Header = ({ userType = 'EXPORTER' }) => {
       if (supabaseClient && typeof supabaseClient.setRlsToken === 'function') {
         supabaseClient.setRlsToken(token)
         if (active) setTokenVersion((v) => v + 1)
-        console.log('🔄 Supabase token rotated at', new Date().toLocaleTimeString())
       } else {
         const client = createClient(token)
         if (active) {
           setSupabaseClient(client)
           setTokenVersion((v) => v + 1)
-          console.log('✅ Supabase client initialized at', new Date().toLocaleTimeString())
         }
       }
     }

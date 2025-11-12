@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 
-const supabase = createClient();
-
 /**
  * Get orders available to a specific forwarder
  * @param {string} forwarderId - The forwarder's company ID
@@ -9,6 +7,10 @@ const supabase = createClient();
  * @returns {Promise<Array>} - Orders with related data
  */
 export async function getForwarderOrders(forwarderId, status = null) {
+  // Create a new Supabase client within the request scope so the Clerk JWT,
+  // injected via the middleware as the Authorization header, is forwarded to Supabase
+  // for RLS evaluation.
+  const supabase = createClient();
   // Base query to get orders where the forwarder is invited
   let query = supabase
     .from('order_selected_forwarders')
@@ -165,6 +167,9 @@ export async function getForwarderOrders(forwarderId, status = null) {
  * @returns {Promise<Object>} - Dashboard metrics
  */
 export async function getForwarderMetrics(forwarderId) {
+  // Same as above: create the client inside the function to ensure the request's
+  // Authorization header is attached for RLS-aware queries.
+  const supabase = createClient();
   try {
     // Get counts of open orders (not submitted and order status is OPEN)
     const { data: openOrdersCount, error: openError } = await supabase

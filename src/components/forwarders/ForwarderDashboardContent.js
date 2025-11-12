@@ -17,7 +17,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const searchParams = useSearchParams();
 
   const [orders, setOrders] = useState([]);
-  console.log(orders);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
