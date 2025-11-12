@@ -1,6 +1,7 @@
-import { supabase } from '@/lib/superbase';
+import { createClient } from '@/lib/supabase/server';
 
 export async function getForwardersByExporter(exporterId) {
+  const supabase = createClient();
   // First, get forwarders with their relationships
   const { data, error } = await supabase
     .from('companies')
@@ -44,6 +45,7 @@ export async function getForwardersByExporter(exporterId) {
 }
 
 export async function getForwardersByService(service) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('companies')
     .select(`
@@ -58,6 +60,7 @@ export async function getForwardersByService(service) {
 }
 
 export async function getForwarderById(forwarderId, exporterId) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('companies')
     .select(`
@@ -101,6 +104,7 @@ export async function getForwarderById(forwarderId, exporterId) {
 }
 
 export async function getForwarderDocuments(forwarderId) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('documents')
     .select(`
@@ -122,6 +126,7 @@ export async function getForwarderDocuments(forwarderId) {
 }
 
 export async function getForwarderMembers(forwarderId) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('company_members')
     .select(`

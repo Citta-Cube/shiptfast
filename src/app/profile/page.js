@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useUser, useAuth } from '@clerk/nextjs'
-import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@clerk/nextjs'
+import useSupabaseAuthClient from '@/hooks/useSupabaseAuthClient'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +21,7 @@ import DeleteMemberDialog from '@/components/profile/DeleteMemberDialog'
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser()
-  const { getToken } = useAuth()
+  const supabase = useSupabaseAuthClient()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -63,16 +63,12 @@ export default function ProfilePage() {
 
   // Fetch user data
   useEffect(() => {
-    if (!isLoaded || !user) return
+    if (!isLoaded || !user || !supabase) return
 
     const fetchUserData = async () => {
       try {
         setLoading(true)
         
-        // Get Clerk JWT token for Supabase RLS - skip cache to ensure fresh token
-        const supabaseToken = await getToken({ template: 'supabase', skipCache: true })
-        const supabase = createClient(supabaseToken)
-
         // Reconcile any pending invitations stored with email as user_id
         try {
           const primaryEmail = user.emailAddresses?.[0]?.emailAddress
@@ -155,7 +151,7 @@ export default function ProfilePage() {
     }
 
     fetchUserData()
-  }, [isLoaded, user, getToken, pathname])
+  }, [isLoaded, user, supabase, pathname])
 
   if (!isLoaded || loading) {
     return (
