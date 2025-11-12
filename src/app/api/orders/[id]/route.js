@@ -47,6 +47,13 @@ export async function PATCH(request, { params }) {
                 { status: 400 }
             );
         }
+
+        if (!['cancel', 'void'].includes(action)) {
+            return NextResponse.json(
+                { error: 'Invalid action. Supported actions: cancel, void' },
+                { status: 400 }
+            );
+        }
     } catch (error) {
         console.error('Error fetching order:', error);
         return NextResponse.json(
