@@ -107,9 +107,7 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
 function extractStoragePathFromUrl(fileUrl) {
   try {
     const url = new URL(fileUrl);
-    console.log("URL", url);
     const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/);
-    console.log("pathMatch", pathMatch);
     return pathMatch ? pathMatch[1] : null;
   } catch {
     return null;
@@ -128,26 +126,28 @@ export async function deleteDocument(id, client = null) {
     .select('metadata, file_url')
     .eq('id', id)
     .single();
-  
-  console.log("Got document row:", document);
 
   if (fetchError) throw fetchError;
   if (!document) throw new Error("Document not found");
 
-  const storagePath =
-    document?.metadata?.storagePath ||
-    extractStoragePathFromUrl(document.file_url);
+  const rawMetadata = typeof document?.metadata === 'string'
+    ? safeJsonParse(document.metadata)
+    : document?.metadata || {};
 
-  console.log("storage Path:", storagePath);
+  const storagePath =
+    rawMetadata?.storagePath ||
+    extractStoragePathFromUrl(document.file_url);
 
   if (!storagePath) {
     throw new Error("No valid storage path found for document");
   }
   
   // Delete file from storage
+  const normalizedPath = normalizeStoragePath(storagePath);
+
   const { error: storageError } = await sb.storage
     .from('documents')
-    .remove([storagePath]);
+    .remove([normalizedPath]);
   
   if (storageError) {
     throw new Error(`Failed to delete file from storage: ${storageError.message}`);
@@ -164,5 +164,19 @@ export async function deleteDocument(id, client = null) {
   }
 
   return { success: true, deletedId: id };
+}
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStoragePath(path) {
+  if (!path) return path;
+  const decoded = decodeURIComponent(path);
+  return decoded.startsWith('/') ? decoded.slice(1) : decoded;
 }
 

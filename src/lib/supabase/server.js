@@ -17,7 +17,7 @@ export function createClient() {
     }
     // Silently handle missing auth header - expected for unauthenticated requests
   } catch (error) {
-    // Headers not available (e.g., during build or outside request context)
+    // Headers not available 
     // This is expected in certain contexts, so we silently fall back
     supabaseHeaders = new Headers()
   }
@@ -27,8 +27,7 @@ export function createClient() {
   try {
     cookieStore = cookies()
   } catch (error) {
-    // Cookies not available (e.g., during build or outside request context)
-    // This is expected in certain contexts, so we silently fall back
+    // Cookies not available
     cookieStore = {
       getAll: () => [],
       get: () => undefined,

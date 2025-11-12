@@ -1,3 +1,4 @@
+// src/app/api/debug/supabase-jwt/route.js
 import { NextResponse } from 'next/server'
 import { getAuth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
