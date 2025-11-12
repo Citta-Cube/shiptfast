@@ -1,20 +1,15 @@
 // src/app/api/freight-forwarders/route.js
 import { getForwardersByExporter } from '@/data-access/freightForwarders';
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/data-access/users';
+import { auth } from '@clerk/nextjs/server';
 import { getUserCompanyMembership } from '@/data-access/companies';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const services = searchParams.get('services');
-    const search = searchParams.get('search');
-    const sort = searchParams.get('sort');
-    // Determine exporter company from Clerk user membership
-    const userId = await getCurrentUserId();
+    const { userId } = await auth();
+    
     if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -22,16 +17,23 @@ export async function GET(request) {
       );
     }
 
+    // Get user's company membership to get exporterId
     const membership = await getUserCompanyMembership(userId);
-    const companyType = membership?.companies?.type;
-    const exporterId = companyType === 'EXPORTER' ? membership?.companies?.id : null;
-
-    if (!exporterId) {
+    
+    if (!membership || !membership.companies) {
       return NextResponse.json(
-        { error: 'Exporter ID is required' },
+        { error: 'User company membership not found' },
         { status: 400 }
       );
     }
+
+    const exporterId = membership.companies.id;
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const services = searchParams.get('services');
+    const search = searchParams.get('search');
+    const sort = searchParams.get('sort');
 
     let forwarders = await getForwardersByExporter(exporterId);
 
@@ -59,9 +61,9 @@ export async function GET(request) {
     }
 
     // Apply sorting
-    if (sort === 'asc' || sort === 'rating_asc') {
+    if (sort === 'asc') {
       forwarders.sort((a, b) => (a.average_rating || 0) - (b.average_rating || 0));
-    } else if (sort === 'desc' || sort === 'rating_desc') {
+    } else if (sort === 'desc') {
       forwarders.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
     }
 

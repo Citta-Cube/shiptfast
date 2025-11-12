@@ -111,7 +111,8 @@ export async function POST(request) {
         additionalInfo: metadata
       }],
       entityType,
-      customPath
+      customPath,
+      supabase
     );
 
     // Create document record in database
@@ -123,7 +124,7 @@ export async function POST(request) {
       entity_id: entityId,
       uploaded_by: uploaderMembershipId,
       metadata: documents[0].metadata
-    });
+    }, supabase);
 
     return NextResponse.json(document);
   } catch (error) {

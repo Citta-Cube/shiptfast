@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Grid, List } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import Pagination from '@/components/ui/pagination';
 import ForwarderMetrics from '@/components/forwarders/ForwarderMetrics';
 import ForwarderSearchAndFilter from '@/components/forwarders/ForwarderSearchAndFilter';
 import ForwarderOrderTabs from '@/components/forwarders/ForwarderOrderTabs';
@@ -21,7 +20,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
   const [activeFilters, setActiveFilters] = useState({
     searchTerm: '',
@@ -34,7 +32,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     fetchOrders();
   }, []);
 
-  // Fetch orders
   const fetchOrders = async () => {
     setIsLoading(true);
     setError(null);
@@ -52,11 +49,9 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
   };
 
-  // Compute filtered orders based on current orders and filters
   const applyFilters = useCallback(() => {
     let result = [...orders];
 
-    // Apply search filter
     if (activeFilters.searchTerm) {
       const term = activeFilters.searchTerm.toLowerCase();
       result = result.filter(order =>
@@ -64,19 +59,16 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
       );
     }
 
-    // Apply shipment type filter
     if (activeFilters.shipmentType !== 'all') {
       const st = String(activeFilters.shipmentType || '').toLowerCase();
       result = result.filter(order => String(order.shipment_type || '').toLowerCase() === st);
     }
 
-    // Apply load type filter
     if (activeFilters.loadType !== 'all') {
       const lt = String(activeFilters.loadType || '').toLowerCase();
       result = result.filter(order => String(order.load_type || '').toLowerCase() === lt);
     }
 
-    // Apply sorting
     if (activeFilters.sortBy) {
       if (activeFilters.sortBy === 'shipmentDate') {
         result.sort((a, b) => new Date(a.cargo_ready_date) - new Date(b.cargo_ready_date));
@@ -98,17 +90,10 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     setFilteredOrders(result);
   }, [orders, activeFilters]);
 
-  // Run filtering whenever applyFilters (and thus its deps) change
   useEffect(() => {
     applyFilters();
   }, [applyFilters]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeFilters]);
-
-  // Sync internal state when URL search params (via props) change
   useEffect(() => {
     setActiveFilters(prev => ({
       ...prev,
@@ -124,7 +109,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     if ((nextFilters.loadType || 'all') !== 'all') queryParams.set('loadType', nextFilters.loadType);
     if (nextFilters.sortBy) queryParams.set('sortBy', nextFilters.sortBy);
 
-    // Preserve current tab if present
     const currentTab = searchParams?.get('tab');
     if (currentTab) queryParams.set('tab', currentTab);
 
@@ -141,9 +125,6 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     });
   };
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
 
   const toggleViewMode = () => {
     setViewMode(prevMode => prevMode === 'grid' ? 'list' : 'grid');
@@ -170,13 +151,13 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
     }
 
     return (
-      <ForwarderOrderTabs
-        orders={filteredOrders}
-        viewMode={viewMode}
-        currentPage={currentPage}
-        itemsPerPage={itemsPerPage}
-        onPageChange={handlePageChange}
-      />
+      <>
+        <ForwarderOrderTabs
+          orders={filteredOrders}
+          viewMode={viewMode}
+          itemsPerPage={itemsPerPage}
+        />
+      </>
     );
   };
 
@@ -187,11 +168,9 @@ const ForwarderDashboardContent = ({ initialFilters = {} }) => {
           <h1 className="text-2xl font-bold">Orders Dashboard</h1>
           {!isLoading && (
             <p className="text-sm text-muted-foreground mt-1">
-              {filteredOrders.length > 0 ? (
-                `${filteredOrders.length} orders available`
-              ) : (
-                'No orders found'
-              )}
+              {filteredOrders.length > 0
+                ? `${filteredOrders.length} orders available`
+                : 'No orders found'}
             </p>
           )}
         </div>

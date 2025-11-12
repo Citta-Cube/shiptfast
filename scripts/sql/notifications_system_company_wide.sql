@@ -10,6 +10,8 @@ DO $$ BEGIN
         'ORDER_DUE_24_HOURS',
         'ORDER_CLOSED',
         'ORDER_CANCELLED',
+        'ORDER_VOIDED',
+        'ORDER_REASSIGNED',
         'NEW_MESSAGE_EXPORTER',
         'NEW_MESSAGE_FORWARDER',
         'QUOTE_RECEIVED',
@@ -19,6 +21,12 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
+
+-- Drop existing functions first to avoid conflicts
+DROP FUNCTION IF EXISTS create_order_notification CASCADE;
+DROP FUNCTION IF EXISTS create_message_notification CASCADE;
+DROP FUNCTION IF EXISTS create_quote_notification CASCADE;
+DROP FUNCTION IF EXISTS check_deadline_notifications CASCADE;
 
 -- Create function to automatically create company-wide notifications for order events
 CREATE OR REPLACE FUNCTION create_order_notification(
@@ -47,7 +55,7 @@ BEGIN
     END IF;
     
     -- Determine recipient companies based on notification type
-    IF p_notification_type IN ('ORDER_CREATED', 'ORDER_DUE_7_DAYS', 'ORDER_DUE_24_HOURS', 'ORDER_CANCELLED') THEN
+    IF p_notification_type IN ('ORDER_CREATED', 'ORDER_DUE_7_DAYS', 'ORDER_DUE_24_HOURS', 'ORDER_CANCELLED', 'ORDER_VOIDED') THEN
         -- Notify all selected freight forwarder companies (one notification per company)
         FOR v_recipient_company_id IN 
             SELECT DISTINCT osf.freight_forwarder_id
@@ -394,7 +402,7 @@ BEGIN
     FOR order_record IN 
         SELECT o.id, o.cargo_ready_date, o.quotation_deadline, o.exporter_id
         FROM orders o
-        WHERE o.status NOT IN ('COMPLETED', 'CANCELLED')
+        WHERE o.status NOT IN ('COMPLETED', 'CANCELLED', 'VOIDED')
         AND (
             (o.cargo_ready_date BETWEEN NOW() AND deadline_7d) OR
             (o.quotation_deadline BETWEEN NOW() AND deadline_7d)
@@ -427,7 +435,7 @@ BEGIN
     FOR order_record IN 
         SELECT o.id, o.cargo_ready_date, o.quotation_deadline, o.exporter_id
         FROM orders o
-        WHERE o.status NOT IN ('COMPLETED', 'CANCELLED')
+        WHERE o.status NOT IN ('COMPLETED', 'CANCELLED', 'VOIDED')
         AND (
             (o.cargo_ready_date BETWEEN NOW() AND deadline_24h) OR
             (o.quotation_deadline BETWEEN NOW() AND deadline_24h)
@@ -495,6 +503,15 @@ BEGIN
                 NEW.exporter_id,
                 jsonb_build_object('order_reference', NEW.reference_number)
             );
+        ELSIF NEW.status = 'VOIDED' THEN
+            PERFORM create_order_notification(
+                NEW.id,
+                'ORDER_VOIDED'::notification_type,
+                'Order Voided',
+                'Order #' || NEW.reference_number || ' has been voided',
+                NEW.exporter_id,
+                jsonb_build_object('order_reference', NEW.reference_number)
+            );
         ELSIF NEW.status = 'COMPLETED' THEN
             PERFORM create_order_notification(
                 NEW.id,
@@ -517,7 +534,7 @@ DECLARE
     quote_record RECORD;
     order_record RECORD;
 BEGIN
-    -- Only trigger when selected_quote_id is newly set
+    -- Handle initial quote selection (first time)
     IF OLD.selected_quote_id IS NULL AND NEW.selected_quote_id IS NOT NULL THEN
         -- Get quote and order details
         SELECT q.*, ff.name as forwarder_name 
@@ -535,11 +552,42 @@ BEGIN
                 'QUOTE_SELECTED'::notification_type,
                 'Your Quote Selected',
                 'Your quote for order #' || order_record.reference_number || ' has been selected',
-                NEW.exporter_id,
+                quote_record.freight_forwarder_id,
                 jsonb_build_object(
                     'order_reference', order_record.reference_number,
                     'quote_id', quote_record.id,
                     'forwarder_name', quote_record.forwarder_name
+                )
+            );
+        END IF;
+    
+    -- Handle quote reassignment (changing from one quote to another)
+    ELSIF OLD.selected_quote_id IS NOT NULL AND NEW.selected_quote_id IS NOT NULL 
+          AND OLD.selected_quote_id != NEW.selected_quote_id THEN
+        
+        -- Get new quote and order details
+        SELECT q.*, ff.name as forwarder_name 
+        INTO quote_record
+        FROM quotes q
+        JOIN companies ff ON q.freight_forwarder_id = ff.id
+        WHERE q.id = NEW.selected_quote_id;
+        
+        SELECT o.reference_number INTO order_record
+        FROM orders o WHERE o.id = NEW.id;
+        
+        IF FOUND THEN
+            -- Send notification to the newly selected forwarder only
+            PERFORM create_order_notification(
+                NEW.id,
+                'ORDER_REASSIGNED'::notification_type,
+                'Order Reassigned to You',
+                'Order #' || order_record.reference_number || ' has been reassigned to your company',
+                quote_record.freight_forwarder_id,
+                jsonb_build_object(
+                    'order_reference', order_record.reference_number,
+                    'quote_id', quote_record.id,
+                    'forwarder_name', quote_record.forwarder_name,
+                    'previous_quote_id', OLD.selected_quote_id
                 )
             );
         END IF;

@@ -81,15 +81,7 @@ export async function PATCH(request, { params }) {
       );
     }
     
-    // Create amendment record if price changed
-    if (quote.net_freight_cost !== netFreightCost) {
-      await supabase.from('quote_amendments').insert({
-        quote_id: quoteId,
-        previous_net_freight_cost: quote.net_freight_cost,
-        new_net_freight_cost: netFreightCost,
-        reason: 'Updated by forwarder'
-      });
-    }
+    // Amendment record is now handled by a database trigger, no manual insert here
     
     // Update quote
     const { data: updatedQuote, error: updateError } = await supabase

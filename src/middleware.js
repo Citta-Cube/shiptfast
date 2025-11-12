@@ -48,7 +48,33 @@ export default clerkMiddleware(async (auth, req) => {
   
   const pathname = req.nextUrl.pathname;
 
-  // Allow public routes
+  // Check if this is an auth route
+  const isAuthRoute =
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/signin") ||
+    pathname.startsWith("/signup");
+
+  // Signed-in users accessing public routes → redirect to dashboard
+  // Allow API routes to proceed (webhooks, cron, etc.)
+  if (userId && isPublicRoute(req)) {
+    // Allow API routes to proceed even for authenticated users
+    if (pathname.startsWith("/api/")) {
+      if (supabaseToken) {
+        const requestHeaders = new Headers(req.headers);
+        requestHeaders.set("Authorization", `Bearer ${supabaseToken}`);
+        return NextResponse.next({
+          request: { headers: requestHeaders }
+        });
+      }
+      return NextResponse.next();
+    }
+    // Redirect authenticated users from public pages to dashboard
+    const url = req.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // Allow public routes for unauthenticated users
   if (isPublicRoute(req)) {
     if (supabaseToken) {
       const requestHeaders = new Headers(req.headers);
@@ -58,18 +84,6 @@ export default clerkMiddleware(async (auth, req) => {
       });
     }
     return NextResponse.next();
-  }
-
-  // Signed-in users on auth pages → redirect to dashboard
-  const isAuthRoute =
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/signin") ||
-    pathname.startsWith("/signup");
-
-  if (userId && isAuthRoute) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
   }
 
   // Not signed in → redirect to catch-all sign in
