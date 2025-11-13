@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import FinalInvoiceControls from '@/components/orders/FinalInvoiceControls';
 
-const SelectedQuoteSection = ({ order, selectedQuote, userRole }) => {
+const SelectedQuoteSection = ({ order, selectedQuote, userRole, onRatingUpdated }) => {
   const [existingRating, setExistingRating] = useState(null);
   const [isCheckingRating, setIsCheckingRating] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -26,6 +26,9 @@ const SelectedQuoteSection = ({ order, selectedQuote, userRole }) => {
           if (response.ok) {
             const data = await response.json();
             setExistingRating(data.rating);
+            if (onRatingUpdated && data?.rating && selectedQuote?.freight_forwarder_id) {
+              onRatingUpdated(selectedQuote.freight_forwarder_id, Number(data.rating.average_score));
+            }
           }
         } catch (error) {
           console.error('Error checking existing rating:', error);
@@ -198,6 +201,9 @@ const SelectedQuoteSection = ({ order, selectedQuote, userRole }) => {
                       if (response.ok) {
                         const data = await response.json();
                         setExistingRating(data.rating);
+                        if (onRatingUpdated && data?.rating && selectedQuote?.freight_forwarder_id) {
+                          onRatingUpdated(selectedQuote.freight_forwarder_id, Number(data.rating.average_score));
+                        }
                       }
                     } catch (error) {
                       console.error('Error fetching updated rating:', error);

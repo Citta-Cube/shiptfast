@@ -28,6 +28,8 @@ const EmptyState = () => (
 );
 
 const QuotationSection = ({ order, quotes, onSelectAgent, userRole, userMembership }) => {
+  const [ratedForwarderId, setRatedForwarderId] = React.useState(null);
+  const [latestCompanyRating, setLatestCompanyRating] = React.useState(null);
   const {
     sortedAndFilteredQuotations,
     sortBy,
@@ -56,7 +58,15 @@ const QuotationSection = ({ order, quotes, onSelectAgent, userRole, userMembersh
   return (  
     <div className="col-span-2 space-y-6">
       {/* Selected Quote Section */}
-  <SelectedQuoteSection order={order} selectedQuote={selectedQuote} userRole={userRole} />
+  <SelectedQuoteSection 
+    order={order} 
+    selectedQuote={selectedQuote} 
+    userRole={userRole}
+    onRatingUpdated={(forwarderId, averageScore) => {
+      setRatedForwarderId(forwarderId);
+      setLatestCompanyRating(averageScore);
+    }}
+  />
       
       {/* Available Quotations Section */}
       <Card>
@@ -134,6 +144,8 @@ const QuotationSection = ({ order, quotes, onSelectAgent, userRole, userMembersh
               order={order} 
               onSelectAgent={onSelectAgent}
               userMembership={userMembership}
+              ratedForwarderId={ratedForwarderId}
+              latestCompanyRating={latestCompanyRating}
             />
           ) : (
             <EmptyState />

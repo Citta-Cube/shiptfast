@@ -41,7 +41,7 @@ const generatePriceHistory = (currentPrice, quoteId) => {
 };
 
 
-const QuotationRow = ({ quotation, order, onSelectAgent, userMembership }) => {
+const QuotationRow = ({ quotation, order, onSelectAgent, userMembership, ratedForwarderId, latestCompanyRating }) => {
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -110,20 +110,61 @@ const QuotationRow = ({ quotation, order, onSelectAgent, userMembership }) => {
     const shipmentType = shipmentTypes[order.shipment_type];
     if (!shipmentType) return null;
 
+    const details = quotation?.quote_details || {};
+
+    // Prepare a set of keys we will render via config to avoid duplicates
+    const configuredKeys = new Set(
+      (shipmentType.fields || [])
+        .map((field) => field.key)
+        // Only include keys that actually exist in data
+        .filter((key) => details[key] !== undefined && details[key] !== null && details[key] !== '')
+    );
+
+    // Exclude common structural/helper keys if any appear
+    const excludedKeys = new Set([
+      // Container/Air/LCL keys that might be rendered elsewhere in other UIs
+      'containerCount',
+      'containerSize',
+      'minimumCBM',
+      'ratePerCBM',
+      'volumeWeight',
+      'chargeableWeight',
+    ]);
+
+    // Collect remaining dynamic detail entries not covered by configured fields
+    const dynamicEntries = Object.entries(details).filter(([key, value]) => {
+      const hasValue = value !== undefined && value !== null && value !== '';
+      return hasValue && !configuredKeys.has(key) && !excludedKeys.has(key);
+    });
+
     return (
       <div className="grid grid-cols-4 gap-4 mt-4">
-        {shipmentType.fields.map((field) => (
-          <div key={field.key}>
-            <p className="text-sm font-medium">{field.label}</p>
-            <p>{field.format ? 
-              field.format(quotation.quote_details[field.key]) : 
-              quotation.quote_details[field.key]}</p>
+        {(shipmentType.fields || [])
+          .filter((field) => {
+            const value = details[field.key];
+            return value !== undefined && value !== null && value !== '';
+          })
+          .map((field) => (
+            <div key={field.key}>
+              <p className="text-sm font-medium">{field.label}</p>
+              <p>
+                {field.format ? field.format(details[field.key]) : details[field.key]}
+              </p>
+            </div>
+          ))}
+
+        {dynamicEntries.map(([key, value]) => (
+          <div key={key}>
+            <p className="text-sm font-medium">
+              {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim()}
+            </p>
+            <p>{String(value)}</p>
           </div>
         ))}
-        <div>
+        {/* <div>
           <p className="text-sm font-medium">Container Type</p>
           <p>{order.order_details.containerType}</p>
-        </div>
+        </div> */}
       </div>
     );
   };
@@ -135,7 +176,13 @@ const QuotationRow = ({ quotation, order, onSelectAgent, userMembership }) => {
           <div className="font-medium">{quotation.companies.name}</div>
         </TableCell>
         <TableCell>
-          <StarRating rating={quotation.companies.average_rating || 0} />
+          <StarRating 
+            rating={
+              (ratedForwarderId && latestCompanyRating != null && quotation.freight_forwarder_id === ratedForwarderId)
+                ? Number(latestCompanyRating)
+                : (quotation.companies.average_rating || 0)
+            } 
+          />
         </TableCell>
         <TableCell>
           <div className="flex items-center space-x-2">
