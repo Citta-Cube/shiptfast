@@ -80,6 +80,7 @@ export default function InviteMemberDialog({ companyId, onInviteSent }) {
       })
 
       const result = await response.json()
+      console.log("result", result);
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to send invitation')

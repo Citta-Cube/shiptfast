@@ -36,9 +36,9 @@ export async function GET(request) {
     const sort = searchParams.get('sort');
 
     let forwarders = await getForwardersByExporter(exporterId);
-
     // Filter out forwarders without relationships (inactive) and only show active ones
-    forwarders = forwarders.filter(ff => ff.relationship && ff.relationship.status === 'ACTIVE');
+    forwarders = forwarders.filter(ff => ff.relationship);
+    // && ff.relationship.status === 'ACTIVE'
 
     // Apply additional status filter if provided
     if (status && status !== 'null') {
