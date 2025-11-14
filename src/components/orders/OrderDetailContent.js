@@ -90,7 +90,7 @@ const OrderDetailContent = ({ order, documents, quotes, userRole, userMembership
           documents={documents}
           entityId={currentOrder.id}
           entityType="ORDER"
-          canUpload={true}
+          canUpload={currentOrder.status === 'OPEN' || currentOrder.status === 'PENDING'}
           canDelete={true}
         />
         {/* Status history (admin interventions) */}

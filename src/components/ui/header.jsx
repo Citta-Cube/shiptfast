@@ -24,9 +24,10 @@ const Header = ({ userType = 'EXPORTER' }) => {
   const router = useRouter()
   const pathname = usePathname()
   const { signOut } = useClerk()
-  const { user, isLoaded } = useUser()
-  const { getToken, isSignedIn } = useAuth()
+  const { user, isLoaded: isUserLoaded } = useUser()
+  const { getToken, isSignedIn, isLoaded: isAuthLoaded } = useAuth()
   const fetchedUserIdRef = useRef(null)
+  const retryTimeoutRef = useRef(null)
 
   const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
 
@@ -35,23 +36,29 @@ const Header = ({ userType = 'EXPORTER' }) => {
     let active = true
 
     const initClient = async () => {
-      if (!isSignedIn) return
-      const token = await getToken({ template: 'supabase' })
+      // Wait for auth to be loaded before attempting to get token
+      if (!isAuthLoaded || !isSignedIn) return
+      
+      try {
+        const token = await getToken({ template: 'supabase' })
 
-      if (!token) {
-        console.warn('⚠️ No Clerk token found')
-        return
-      }
-
-      if (supabaseClient && typeof supabaseClient.setRlsToken === 'function') {
-        supabaseClient.setRlsToken(token)
-        if (active) setTokenVersion((v) => v + 1)
-      } else {
-        const client = createClient(token)
-        if (active) {
-          setSupabaseClient(client)
-          setTokenVersion((v) => v + 1)
+        if (!token) {
+          console.warn('No Clerk token found')
+          return
         }
+
+        if (supabaseClient && typeof supabaseClient.setRlsToken === 'function') {
+          supabaseClient.setRlsToken(token)
+          if (active) setTokenVersion((v) => v + 1)
+        } else {
+          const client = createClient(token)
+          if (active) {
+            setSupabaseClient(client)
+            setTokenVersion((v) => v + 1)
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing Supabase client:', error)
       }
     }
 
@@ -61,12 +68,31 @@ const Header = ({ userType = 'EXPORTER' }) => {
     return () => {
       active = false
       clearInterval(interval)
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
     }
-  }, [getToken, isSignedIn, supabaseClient])
+  }, [getToken, isSignedIn, isAuthLoaded, supabaseClient])
 
   // 🔹 Step 2: Fetch user's company info whenever Supabase or token refreshes
   useEffect(() => {
-    if (!isLoaded || !user || !supabaseClient) return
+    // Wait for both user and auth to be fully loaded
+    if (!isUserLoaded || !isAuthLoaded || !user || !supabaseClient) {
+      // If we're still loading and have a user ID, set up retry mechanism
+      if (user?.id && !companyMembership && (isUserLoaded || isAuthLoaded)) {
+        // Clear any existing retry timeout
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current)
+        }
+        // Retry after a short delay to allow Clerk to finish hydrating
+        retryTimeoutRef.current = setTimeout(() => {
+          setTokenVersion((v) => v + 1) // Trigger re-fetch
+        }, 500)
+      }
+      return
+    }
+    
+    // Skip if we already fetched for this user
     if (fetchedUserIdRef.current === user.id && companyMembership) return
 
     const fetchUserData = async () => {
@@ -103,7 +129,16 @@ const Header = ({ userType = 'EXPORTER' }) => {
           .single()
 
         if (error && error.code !== 'PGRST116') {
-          console.error('❌ Error fetching company data:', error)
+          console.error(' Error fetching company data:', error)
+          // Retry after a delay if there was an error and we haven't fetched yet
+          if (!fetchedUserIdRef.current && error.code !== 'PGRST116') {
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current)
+            }
+            retryTimeoutRef.current = setTimeout(() => {
+              setTokenVersion((v) => v + 1) // Trigger retry
+            }, 1000)
+          }
           return
         }
 
@@ -113,14 +148,30 @@ const Header = ({ userType = 'EXPORTER' }) => {
           fetchedUserIdRef.current = user.id
         }
       } catch (err) {
-        console.error('❌ Error fetching user company info:', err)
+        console.error('Error fetching user company info:', err)
+        // Retry on error if we haven't successfully fetched yet
+        if (!fetchedUserIdRef.current) {
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current)
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            setTokenVersion((v) => v + 1) // Trigger retry
+          }, 1000)
+        }
       } finally {
         setLoading(false)
       }
     }
 
     fetchUserData()
-  }, [isLoaded, user?.id, supabaseClient, tokenVersion])
+    
+    // Cleanup timeout on unmount or dependency change
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [isUserLoaded, isAuthLoaded, user?.id, supabaseClient, tokenVersion, companyMembership])
 
   // 🔹 Logout
   const handleLogout = async () => {
@@ -135,7 +186,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
     }
   }
 
-  // 🔹 Navigation helpers
+  // Navigation helpers
   const handleProfileClick = () => {
     setIsNavigating(true)
     router.push('/profile?tab=personal')
@@ -148,7 +199,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
 
   useEffect(() => setIsNavigating(false), [pathname])
 
-  // 🔹 Display user info
+  // Display user info
   const firstName = user?.firstName || companyMembership?.first_name || ''
   const lastName = user?.lastName || companyMembership?.last_name || ''
   const fullName =
@@ -162,7 +213,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
       ? `${firstName[0]}${lastName[0]}`
       : user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?'
 
-  // 🔹 UI
+  // UI
   return (
     <header className="flex h-14 items-center gap-4 border-b px-4 lg:h-[80px] lg:px-6">
       <Sheet>
@@ -241,7 +292,7 @@ const Header = ({ userType = 'EXPORTER' }) => {
 
           <div className="flex flex-col">
             <div className="text-sm font-medium text-foreground">
-              {loading ? 'Loading...' : fullName}
+              {fullName || 'User'}
             </div>
             {companyName && (
               <div className="text-xs text-muted-foreground">{companyName}</div>
