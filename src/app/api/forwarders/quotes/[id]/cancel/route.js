@@ -63,6 +63,28 @@ export async function PATCH(request, { params }) {
       );
     }
     
+    // Get the order to check its status
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('status')
+      .eq('id', quote.order_id)
+      .single();
+    
+    if (orderError || !order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Prevent cancellation when order status is PENDING
+    if (order.status === 'PENDING') {
+      return NextResponse.json(
+        { error: 'Cannot cancel quote when order status is PENDING. You can only edit quotes for pending orders.' },
+        { status: 400 }
+      );
+    }
+    
     // Cancel the quote
     const { error: updateError } = await supabase
       .from('quotes')
