@@ -37,25 +37,116 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Insufficient permissions to invite members' }, { status: 403 })
     }
 
-    // Check if user already exists in the company
-    const { data: existingMember, error: existingError } = await supabase
-      .from('company_members')
-      .select('id, is_active')
-      .eq('company_id', companyId)
-      .eq('email', email) // Check by email field
-      .single()
-
-    if (existingError && existingError.code !== 'PGRST116') {
-      return NextResponse.json({ error: 'Error checking existing membership' }, { status: 500 })
+    // First, see if this email already belongs to an existing Clerk user
+    let targetClerkUser = null
+    try {
+      const clerk = await clerkClient()
+      // getUserList with email filter; if SDK differs, this will throw and we fall back to invitation flow
+      const usersRes = await clerk.users.getUserList({ emailAddress: [email] })
+      const usersArr = Array.isArray(usersRes?.data) ? usersRes.data : Array.isArray(usersRes) ? usersRes : []
+      targetClerkUser = usersArr[0] || null
+    } catch (e) {
+      // Non-fatal: if lookup fails, we proceed with invitation flow
+      console.warn('Clerk user lookup failed, proceeding with invite flow:', e?.message || e)
     }
 
-    if (existingMember) {
-      return NextResponse.json({ error: 'User is already a member of this company' }, { status: 400 })
+    // If the email maps to an existing Clerk user, handle membership directly to avoid duplicate insertions
+    if (targetClerkUser?.id) {
+      // Check if that user is already a member of this company
+      const { data: existingByUser, error: existingByUserError } = await supabase
+        .from('company_members')
+        .select('id, is_active')
+        .eq('company_id', companyId)
+        .eq('user_id', targetClerkUser.id)
+        .single()
+
+      if (existingByUserError && existingByUserError.code !== 'PGRST116') {
+        console.error('Error checking existing membership by user_id:', existingByUserError)
+        return NextResponse.json({ error: 'Error checking existing membership' }, { status: 500 })
+      }
+
+      if (existingByUser && existingByUser.is_active) {
+        return NextResponse.json({ error: 'User is already a member of this company' }, { status: 409 })
+      }
+
+      if (existingByUser && !existingByUser.is_active) {
+        // There is an inactive row for the same user_id; promote it to active and update details
+        const { error: activateError } = await supabase
+          .from('company_members')
+          .update({
+            is_active: true,
+            first_name: firstName || targetClerkUser.firstName || null,
+            last_name: lastName || targetClerkUser.lastName || null,
+            job_title: jobTitle || null,
+            role: role || 'VIEWER'
+          })
+          .eq('id', existingByUser.id)
+
+        if (activateError) {
+          console.error('Error activating existing inactive membership:', activateError)
+          return NextResponse.json({ error: 'Failed to activate existing membership' }, { status: 500 })
+        }
+
+        return NextResponse.json({ success: true, message: 'Existing invitation activated. User is now a member.' })
+      }
+
+      // No existing row — add the user directly as an active member (no email invitation needed)
+      const { data: inserted, error: insertMemberError } = await supabase
+        .from('company_members')
+        .insert({
+          company_id: companyId,
+          user_id: targetClerkUser.id,
+          first_name: firstName || targetClerkUser.firstName || null,
+          last_name: lastName || targetClerkUser.lastName || null,
+          job_title: jobTitle || null,
+          role: role || 'VIEWER',
+          is_active: true
+        })
+        .select()
+        .single()
+
+      if (insertMemberError) {
+        // Handle race-condition duplicate gracefully
+        if (insertMemberError.code === '23505') {
+          return NextResponse.json({ error: 'User is already a member of this company' }, { status: 409 })
+        }
+        console.error('Error adding existing Clerk user as member:', insertMemberError)
+        return NextResponse.json({ error: 'Failed to add user as member' }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, message: 'User added as a company member', memberId: inserted.id })
+    }
+
+    // If no Clerk user exists for this email, prevent duplicate pending invitations by email (if such a column exists)
+    try {
+      const { data: existingInvite, error: existingInviteError } = await supabase
+        .from('company_members')
+        .select('id, is_active')
+        .eq('company_id', companyId)
+        .eq('email', email)
+        .single()
+
+      if (existingInvite && !existingInvite.is_active) {
+        return NextResponse.json({ error: 'This email has already been invited to the company' }, { status: 409 })
+      }
+
+      if (existingInvite && existingInvite.is_active) {
+        return NextResponse.json({ error: 'User is already a member of this company' }, { status: 409 })
+      }
+
+      if (existingInviteError && existingInviteError.code !== 'PGRST116') {
+        return NextResponse.json({ error: 'Error checking existing invitations' }, { status: 500 })
+      }
+    } catch (e) {
+      // If the table doesn't have an email column, skip this check
+      console.warn('Skipping duplicate-invite-by-email check (email column may not exist):', e?.message || e)
     }
 
     // Create invitation record in company_members with is_active = false
     const invitation = await createCompanyInvitation(companyId, {
-      email: email, // Store email in email field
+      // Store email both in a dedicated column (if exists) and in user_id for pending invites
+      user_id: email,
+      email: email,
       first_name: firstName || null,
       last_name: lastName || null,
       job_title: jobTitle || null,

@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
 
+// Helper function to get the app URL from environment
+function getAppUrl() {
+  const url = process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+    || 'http://localhost:3000'
+  return url.replace(/\/$/, '')
+}
+
 // Creating a handler to a GET request to route /auth/confirm
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
@@ -9,9 +17,9 @@ export async function GET(request) {
   const type = searchParams.get('type')
   const next = '/account'
 
-  // Create redirect link without the secret token
-  const redirectTo = request.nextUrl.clone()
-  redirectTo.pathname = next
+  // Use NEXT_PUBLIC_APP_URL instead of request origin to prevent localhost redirects
+  const appUrl = getAppUrl()
+  const redirectTo = new URL(next, appUrl)
   redirectTo.searchParams.delete('token_hash')
   redirectTo.searchParams.delete('type')
 
@@ -29,6 +37,6 @@ export async function GET(request) {
   }
 
   // return the user to an error page with some instructions
-  redirectTo.pathname = '/error'
-  return NextResponse.redirect(redirectTo)
+  const errorUrl = new URL('/error', appUrl)
+  return NextResponse.redirect(errorUrl)
 }

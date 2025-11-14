@@ -378,7 +378,7 @@ const QuoteManagementSection = ({
                     
                     {quote.status === 'ACTIVE' && (
                       <>
-                        {/* Edit Quote - Only available when order status is OPEN */}
+                        {/* Edit Quote - Available when order status is OPEN or PENDING */}
                         <Button 
                           variant="outline" 
                           size="sm"
@@ -386,13 +386,13 @@ const QuoteManagementSection = ({
                             e.stopPropagation();
                             handleOpenDialog(quote);
                           }}
-                          disabled={orderStatus !== 'OPEN'}
+                          disabled={orderStatus !== 'OPEN' && orderStatus !== 'PENDING'}
                         >
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
                         
-                        {/* Cancel Quote - Only available when order status is OPEN */}
+                        {/* Cancel Quote - Only available when order status is OPEN (not PENDING) */}
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
