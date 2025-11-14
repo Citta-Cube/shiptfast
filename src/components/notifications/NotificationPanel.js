@@ -151,6 +151,12 @@ const extractOrderFromMessage = (message) => {
   return null;
 };
 
+// 🧠 Format time without "about" or "ago"
+const formatCleanTime = (date) => {
+  const formatted = formatDistanceToNow(new Date(date), { addSuffix: false });
+  return formatted.replace(/^about\s/, '').trim();
+};
+
 const NotificationItem = ({ notification, onMarkAsRead, onClick }) => {
   const isReadByUser = notification.is_read_by_user;
   const content = getNotificationContent(notification);
@@ -177,7 +183,7 @@ const NotificationItem = ({ notification, onMarkAsRead, onClick }) => {
     >
       {/* Top-right timestamp so message can use full width below */}
       <div className="absolute top-3 right-2 text-xs text-muted-foreground">
-        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+        {formatCleanTime(notification.created_at)}
       </div>
 
       <div className="flex items-start gap-3">
@@ -346,32 +352,25 @@ const NotificationPanel = () => {
 
   const handleNotificationClick = (notification) => {
     const { order_id, quote_id } = notification;
-    
-    // For both order and quote notifications, redirect to the order page
-    // since quotes are displayed within order detail pages
+
     if (order_id) {
-      // Route based on company type
       let orderPath;
       if (companyType === 'FREIGHT_FORWARDER') {
         orderPath = `/forwarders/orders/${order_id}`;
       } else if (companyType === 'EXPORTER') {
         orderPath = `/orders/${order_id}`;
       } else {
-        // Default fallback for other roles (admin, etc.)
         orderPath = `/orders/${order_id}`;
       }
       window.location.href = orderPath;
     } else if (quote_id && !order_id) {
-      // If we only have quote_id but no order_id (shouldn't happen based on the data structure)
-      // redirect to dashboard as fallback
       if (companyType === 'FREIGHT_FORWARDER') {
         window.location.href = '/forwarders/dashboard';
       } else {
         window.location.href = '/dashboard';
       }
     }
-    
-    // Mark as read if not already read
+
     if (!notification.is_read_by_user) {
       markAsRead(notification.id);
     }

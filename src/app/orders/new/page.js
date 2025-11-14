@@ -36,16 +36,46 @@ const NewOrderPage = () => {
     containerType: '',
     palletCBM: '',
     cargoCBM: '',
-    deliveryAddress: '',
+  deliveryAddress: '',
+  // Inland delivery fields
+  requireInlandDelivery: false,
+  finalDeliveryAddress: '',
+  finalDeliveryCity: '',
+  finalDeliveryPostalCode: '',
+  finalDeliveryCountry: '',
     selectedForwarders: [],
     documents: [],
     palletizedCargo: null,
-    exporterId: 'e0912188-4fbd-415e-b5a7-19b35cfbab42'
+    exporterId: null
   });
   const [freightForwarders, setFreightForwarders] = useState([]);
   const [isLoadingForwarders, setIsLoadingForwarders] = useState(false);
 
   const router = useRouter();
+
+  // Fetch exporterId from user session
+  useEffect(() => {
+    const fetchExporterId = async () => {
+      try {
+        const response = await fetch('/api/me');
+        if (!response.ok) {
+          throw new Error('Failed to fetch user info');
+        }
+        const userInfo = await response.json();
+        if (userInfo.companyId) {
+          setOrderData(prev => ({
+            ...prev,
+            exporterId: userInfo.companyId
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching exporter ID:', error);
+        toast.error('Failed to load user information');
+      }
+    };
+
+    fetchExporterId();
+  }, []);
 
   const handleInputChange = (field, value) => {
     if (field === 'isUrgent') {
@@ -99,14 +129,26 @@ const NewOrderPage = () => {
       // Add common fields
       if (orderData.dimensions) orderDetails.dimensions = orderData.dimensions;
       if (orderData.cargoType) orderDetails.cargoType = orderData.cargoType;
-      if (['DDP', 'DAP', 'CPT', 'CIP', 'DPU'].includes(orderData.incoterm)) {
-        orderDetails.deliveryAddress = orderData.deliveryAddress;
+
+      // Build inland delivery payload
+      const finalDeliveryAddress = orderData.requireInlandDelivery
+        ? {
+            address: orderData.finalDeliveryAddress || null,
+            city: orderData.finalDeliveryCity || null,
+            postal_code: orderData.finalDeliveryPostalCode || null,
+          }
+        : null;
+
+      // Validate exporterId is available
+      if (!orderData.exporterId) {
+        toast.error("User company information not available. Please refresh the page.");
+        return;
       }
 
       // Update the orderData structure to match the API expectations
       formData.append('orderData', JSON.stringify({
         reference_number: orderData.orderNumber,
-        exporter_id: 'e0912188-4fbd-415e-b5a7-19b35cfbab42', // Make sure this is available from user context
+        exporter_id: orderData.exporterId,
         shipment_type: orderData.shipmentType,
         load_type: orderData.loadType,
         incoterm: orderData.incoterm,
@@ -117,7 +159,11 @@ const NewOrderPage = () => {
         note_is_important: orderData.noteIsImportant || false,
         origin_port_id: orderData.originPort,
         destination_port_id: orderData.destinationPort,
-        order_details: orderDetails
+        order_details: orderDetails,
+        // New inland delivery fields
+        require_inland_delivery: !!orderData.requireInlandDelivery,
+        final_delivery_address: finalDeliveryAddress,
+        final_destination_country_code: orderData.requireInlandDelivery ? (orderData.finalDeliveryCountry || null) : null,
       }));
 
       formData.append('selectedForwarderIds', JSON.stringify(orderData.selectedForwarders));

@@ -3,7 +3,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 import QuotationRow from './QuotationRow';
 import { tableColumns } from '@/config/shipmentConfig';
 
-const QuotationTable = ({ quotations, order, onSelectAgent }) => {
+const QuotationTable = ({ quotations, order, onSelectAgent, userMembership, ratedForwarderId, latestCompanyRating }) => {
   return (
     <Table>
       <TableHeader>
@@ -22,6 +22,9 @@ const QuotationTable = ({ quotations, order, onSelectAgent }) => {
             quotation={quotation} 
             order={order} 
             onSelectAgent={onSelectAgent}
+            userMembership={userMembership}
+            ratedForwarderId={ratedForwarderId}
+            latestCompanyRating={latestCompanyRating}
           />
         ))}
       </TableBody>

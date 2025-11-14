@@ -1,30 +1,44 @@
 // src/app/api/freight-forwarders/route.js
 import { getForwardersByExporter } from '@/data-access/freightForwarders';
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { getUserCompanyMembership } from '@/data-access/companies';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get user's company membership to get exporterId
+    const membership = await getUserCompanyMembership(userId);
+    
+    if (!membership || !membership.companies) {
+      return NextResponse.json(
+        { error: 'User company membership not found' },
+        { status: 400 }
+      );
+    }
+
+    const exporterId = membership.companies.id;
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const services = searchParams.get('services');
     const search = searchParams.get('search');
     const sort = searchParams.get('sort');
-    // TODO: get exporterId from user session
-    const exporterId = 'e0912188-4fbd-415e-b5a7-19b35cfbab42';
-
-    if (!exporterId) {
-      return NextResponse.json(
-        { error: 'Exporter ID is required' },
-        { status: 400 }
-      );
-    }
 
     let forwarders = await getForwardersByExporter(exporterId);
-
     // Filter out forwarders without relationships (inactive) and only show active ones
-    forwarders = forwarders.filter(ff => ff.relationship && ff.relationship.status === 'ACTIVE');
+    forwarders = forwarders.filter(ff => ff.relationship);
+    // && ff.relationship.status === 'ACTIVE'
 
     // Apply additional status filter if provided
     if (status && status !== 'null') {

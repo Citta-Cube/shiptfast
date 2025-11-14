@@ -98,10 +98,18 @@ export default function SignInPage() {
         await setActive({ session: result.createdSessionId });
         handleSuccess();
         
-        // Small delay to show the success message before redirect
+        // Wait for Clerk to fully hydrate before redirecting
+        // This ensures the header component receives the user data immediately
+        // Use router.refresh() to ensure server components get fresh session data
         setTimeout(() => {
-          router.push("/dashboard");
-        }, 1500);
+          // Refresh the router to ensure all server components are updated with new session
+          router.refresh();
+          
+          // Additional delay to allow Clerk hooks to fully hydrate on client side
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 500);
+        }, 800);
       } else if (result.status === "needs_new_password") {
         toast.info("Password Reset Required", {
           description: "You need to reset your password before continuing.",

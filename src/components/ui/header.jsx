@@ -1,40 +1,105 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useClerk, useUser } from '@clerk/nextjs'
+import React, { useState, useEffect, useRef } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import { useClerk, useUser, useAuth } from '@clerk/nextjs'
 import { Menu, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { exporterConfig, forwarderConfig } from '@/config/dashboard'
 import { ThemeModeToggle } from '@/components/ThemeModeToggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { createClient } from '@/lib/supabase/client'
 import NotificationPanel from '@/components/notifications/NotificationPanel'
+import { createClient } from '@/lib/supabase/client'
 
 const Header = ({ userType = 'EXPORTER' }) => {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [companyMembership, setCompanyMembership] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [supabaseClient, setSupabaseClient] = useState(null)
+  const [tokenVersion, setTokenVersion] = useState(0) // triggers data refresh
+
   const router = useRouter()
+  const pathname = usePathname()
   const { signOut } = useClerk()
-  const { user, isLoaded } = useUser()
-  
-  // Select the appropriate config based on userType
+  const { user, isLoaded: isUserLoaded } = useUser()
+  const { getToken, isSignedIn, isLoaded: isAuthLoaded } = useAuth()
+  const fetchedUserIdRef = useRef(null)
+  const retryTimeoutRef = useRef(null)
+
   const config = userType === 'FREIGHT_FORWARDER' ? forwarderConfig : exporterConfig
 
-  // Fetch user's company information
+  // 🔹 Step 1: Create Supabase client that refreshes token periodically
   useEffect(() => {
-    if (!isLoaded || !user) return
+    let active = true
+
+    const initClient = async () => {
+      // Wait for auth to be loaded before attempting to get token
+      if (!isAuthLoaded || !isSignedIn) return
+      
+      try {
+        const token = await getToken({ template: 'supabase' })
+
+        if (!token) {
+          console.warn('No Clerk token found')
+          return
+        }
+
+        if (supabaseClient && typeof supabaseClient.setRlsToken === 'function') {
+          supabaseClient.setRlsToken(token)
+          if (active) setTokenVersion((v) => v + 1)
+        } else {
+          const client = createClient(token)
+          if (active) {
+            setSupabaseClient(client)
+            setTokenVersion((v) => v + 1)
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing Supabase client:', error)
+      }
+    }
+
+    initClient()
+    const interval = setInterval(initClient, 50 * 1000) // Refresh before expiry
+
+    return () => {
+      active = false
+      clearInterval(interval)
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [getToken, isSignedIn, isAuthLoaded, supabaseClient])
+
+  // 🔹 Step 2: Fetch user's company info whenever Supabase or token refreshes
+  useEffect(() => {
+    // Wait for both user and auth to be fully loaded
+    if (!isUserLoaded || !isAuthLoaded || !user || !supabaseClient) {
+      // If we're still loading and have a user ID, set up retry mechanism
+      if (user?.id && !companyMembership && (isUserLoaded || isAuthLoaded)) {
+        // Clear any existing retry timeout
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current)
+        }
+        // Retry after a short delay to allow Clerk to finish hydrating
+        retryTimeoutRef.current = setTimeout(() => {
+          setTokenVersion((v) => v + 1) // Trigger re-fetch
+        }, 500)
+      }
+      return
+    }
+    
+    // Skip if we already fetched for this user
+    if (fetchedUserIdRef.current === user.id && companyMembership) return
 
     const fetchUserData = async () => {
       try {
-        setLoading(true)
-        const supabase = createClient()
+        if (!companyMembership) setLoading(true)
 
-        // Fetch user's company information
-        const { data: companyData, error: companyError } = await supabase
+        const { data, error } = await supabaseClient
           .from('company_members')
           .select(`
             id,
@@ -63,55 +128,92 @@ const Header = ({ userType = 'EXPORTER' }) => {
           .eq('is_active', true)
           .single()
 
-        if (companyError && companyError.code !== 'PGRST116') {
-          console.error('Error fetching company data:', companyError)
+        if (error && error.code !== 'PGRST116') {
+          console.error(' Error fetching company data:', error)
+          // Retry after a delay if there was an error and we haven't fetched yet
+          if (!fetchedUserIdRef.current && error.code !== 'PGRST116') {
+            if (retryTimeoutRef.current) {
+              clearTimeout(retryTimeoutRef.current)
+            }
+            retryTimeoutRef.current = setTimeout(() => {
+              setTokenVersion((v) => v + 1) // Trigger retry
+            }, 1000)
+          }
+          return
         }
 
-        setCompanyMembership(companyData)
-      } catch (error) {
-        console.error('Error fetching user data:', error)
+        if (data) {
+          console.log('🏢 Company membership fetched:', data)
+          setCompanyMembership(data)
+          fetchedUserIdRef.current = user.id
+        }
+      } catch (err) {
+        console.error('Error fetching user company info:', err)
+        // Retry on error if we haven't successfully fetched yet
+        if (!fetchedUserIdRef.current) {
+          if (retryTimeoutRef.current) {
+            clearTimeout(retryTimeoutRef.current)
+          }
+          retryTimeoutRef.current = setTimeout(() => {
+            setTokenVersion((v) => v + 1) // Trigger retry
+          }, 1000)
+        }
       } finally {
         setLoading(false)
       }
     }
 
     fetchUserData()
-  }, [isLoaded, user])
+    
+    // Cleanup timeout on unmount or dependency change
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [isUserLoaded, isAuthLoaded, user?.id, supabaseClient, tokenVersion, companyMembership])
 
+  // 🔹 Logout
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
       await signOut()
       router.push('/')
-    } catch (error) {
-      console.error('Logout failed:', error)
+    } catch (err) {
+      console.error('Logout failed:', err)
     } finally {
       setIsLoggingOut(false)
     }
   }
 
+  // Navigation helpers
   const handleProfileClick = () => {
+    setIsNavigating(true)
     router.push('/profile?tab=personal')
   }
 
   const handleNavigation = (href) => {
     setIsNavigating(true)
     router.push(href)
-    // The loading state will be reset when navigation completes or component unmounts
   }
 
-  // Get user's first name and last name
+  useEffect(() => setIsNavigating(false), [pathname])
+
+  // Display user info
   const firstName = user?.firstName || companyMembership?.first_name || ''
   const lastName = user?.lastName || companyMembership?.last_name || ''
-  const fullName = firstName && lastName ? `${firstName} ${lastName}` : user?.emailAddresses[0]?.emailAddress?.split('@')[0] || ''
-  
-  // Get company name
+  const fullName =
+    firstName && lastName
+      ? `${firstName} ${lastName}`
+      : user?.emailAddresses[0]?.emailAddress?.split('@')[0] || ''
+
   const companyName = companyMembership?.companies?.name || ''
+  const userInitials =
+    firstName && lastName
+      ? `${firstName[0]}${lastName[0]}`
+      : user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?'
 
-  const userInitials = firstName && lastName 
-    ? `${firstName[0]}${lastName[0]}` 
-    : user?.emailAddresses[0]?.emailAddress?.charAt(0).toUpperCase() || '?'
-
+  // UI
   return (
     <header className="flex h-14 items-center gap-4 border-b px-4 lg:h-[80px] lg:px-6">
       <Sheet>
@@ -124,62 +226,62 @@ const Header = ({ userType = 'EXPORTER' }) => {
         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
           <nav className="flex flex-col gap-4">
             {config.sidebarNav.map((item, index) => (
-              <a
+              <Link
                 key={index}
                 href={item.href}
-                className="flex items-center gap-2 text-lg font-medium"
+                onClick={() => setIsNavigating(true)}
+                className="flex items-center gap-2 text-lg font-medium hover:text-foreground transition-colors"
               >
                 {item.icon && <item.icon className="h-5 w-5" />}
                 {item.title}
-              </a>
+              </Link>
             ))}
           </nav>
         </SheetContent>
       </Sheet>
-      <div className="w-full flex-1">
-        
-      </div>
+
+      <div className="w-full flex-1" />
+
       <nav className="hidden gap-4 md:flex md:items-center">
-        {config.mainNav.map((item, index) => {
-          // Render the first item as a button
-          if (index === 0) {
-            return (
-              <Button
-                key={index}
-                onClick={() => handleNavigation(item.href)}
-                className="text-sm font-medium min-w-[120px]"
-                disabled={item.disabled || isNavigating}
-              >
-                {isNavigating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  item.title
-                )}
-              </Button>
-            )
-          }
-          
-          // Render other items as regular links
-          return (
-            <a
+        {config.mainNav.map((item, index) =>
+          index === 0 ? (
+            <Button
+              key={index}
+              onClick={() => handleNavigation(item.href)}
+              className="text-sm font-medium min-w-[120px]"
+              disabled={item.disabled || isNavigating}
+            >
+              {isNavigating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                item.title
+              )}
+            </Button>
+          ) : (
+            <Link
               key={index}
               href={item.href}
-              className={`text-sm font-medium ${item.disabled ? 'cursor-not-allowed opacity-80' : 'hover:text-foreground'}`}
+              onClick={() => setIsNavigating(true)}
+              className={`text-sm font-medium ${
+                item.disabled
+                  ? 'cursor-not-allowed opacity-80'
+                  : 'hover:text-foreground transition-colors'
+              }`}
             >
               {item.title}
-            </a>
+            </Link>
           )
-        })}
+        )}
       </nav>
+
       <div className="flex items-center gap-2">
-        {/* Notifications Panel */}
         <NotificationPanel />
-        
-        {/* User Profile Section - Click to navigate to profile */}
-        <div 
+
+        {/* User Profile */}
+        <div
           onClick={handleProfileClick}
           className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors"
         >
@@ -187,19 +289,17 @@ const Header = ({ userType = 'EXPORTER' }) => {
             <AvatarImage src={user?.imageUrl} alt={fullName || 'User'} />
             <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
-          
+
           <div className="flex flex-col">
             <div className="text-sm font-medium text-foreground">
-              {fullName}
+              {fullName || 'User'}
             </div>
             {companyName && (
-              <div className="text-xs text-muted-foreground">
-                {companyName}
-              </div>
+              <div className="text-xs text-muted-foreground">{companyName}</div>
             )}
           </div>
         </div>
-        
+
         <ThemeModeToggle />
       </div>
     </header>

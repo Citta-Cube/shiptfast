@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -31,6 +32,7 @@ const QuoteManagementSection = ({
   orderStatus,
   selectedQuoteId
 }) => {
+  const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +74,7 @@ const QuoteManagementSection = ({
         toast.success('Quote cancelled successfully', {
           description: 'Your quote has been cancelled.'
         });
+        router.refresh();
         setOpenQuoteId(null);
       } else {
         toast.error('Failed to cancel quote', {
@@ -133,6 +136,7 @@ const QuoteManagementSection = ({
         setSelectedQuote(null);
         setEditPrice('');
         setPriceEditError('');
+        router.refresh();
       } else {
         toast.error('Failed to update quote', {
           description: data.error || 'An error occurred while updating the quote.'

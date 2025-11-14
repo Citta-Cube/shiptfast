@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { createClient } from '@/lib/supabase/client'
+import useSupabaseAuthClient from '@/hooks/useSupabaseAuthClient'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +21,9 @@ import DeleteMemberDialog from '@/components/profile/DeleteMemberDialog'
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser()
+  const supabase = useSupabaseAuthClient()
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('personal')
   const [companyMembership, setCompanyMembership] = useState(null)
@@ -61,13 +63,12 @@ export default function ProfilePage() {
 
   // Fetch user data
   useEffect(() => {
-    if (!isLoaded || !user) return
+    if (!isLoaded || !user || !supabase) return
 
     const fetchUserData = async () => {
       try {
         setLoading(true)
-        const supabase = createClient()
-
+        
         // Reconcile any pending invitations stored with email as user_id
         try {
           const primaryEmail = user.emailAddresses?.[0]?.emailAddress
@@ -150,7 +151,7 @@ export default function ProfilePage() {
     }
 
     fetchUserData()
-  }, [isLoaded, user])
+  }, [isLoaded, user, supabase, pathname])
 
   if (!isLoaded || loading) {
     return (

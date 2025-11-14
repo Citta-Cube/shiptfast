@@ -9,14 +9,21 @@ AS $$
 DECLARE
   new_order_id uuid;
   forwarder_id uuid;
-  exporter_id uuid = (order_data->>'exporter_id')::uuid;
+  v_exporter_id uuid = (order_data->>'exporter_id')::uuid;
   invalid_forwarders text[];
   inactive_forwarders text[];
   doc jsonb;
   current_user_id uuid;
+  raw_sub text;
 BEGIN
-  -- Get current user ID from session
-  current_user_id := auth.uid();
+  -- Get current user ID from session safely (works with non-UUID providers like Clerk)
+  -- Prefer reading the raw sub claim and only cast if it matches UUID format
+  raw_sub := (auth.jwt() ->> 'sub');
+  IF raw_sub ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+    current_user_id := raw_sub::uuid;
+  ELSE
+    current_user_id := NULL; -- leave null when sub is not a UUID
+  END IF;
   
   -- Check if all forwarders have a relationship with the exporter
   SELECT 
@@ -38,7 +45,7 @@ BEGIN
     JOIN companies f ON f.id = f_id
     LEFT JOIN forwarder_relationships fr 
       ON fr.forwarder_id = f.id 
-      AND fr.exporter_id = exporter_id::uuid
+    AND fr.exporter_id = v_exporter_id
   ) fc;
 
   -- Raise exception if any forwarders are invalid or inactive
@@ -62,11 +69,14 @@ BEGIN
     is_urgent,
     origin_port_id,
     destination_port_id,
-    order_details
+    order_details,
+    require_inland_delivery,
+    final_delivery_address,
+    final_destination_country_code
   )
   SELECT
     (order_data->>'reference_number')::text,
-    exporter_id,
+    v_exporter_id,
     (order_data->>'shipment_type')::service,
     (order_data->>'load_type')::load_type,
     (order_data->>'incoterm')::incoterm,
@@ -75,7 +85,10 @@ BEGIN
     (order_data->>'is_urgent')::boolean,
     (order_data->>'origin_port_id')::uuid,
     (order_data->>'destination_port_id')::uuid,
-    (order_data->>'order_details')::jsonb
+    (order_data->>'order_details')::jsonb,
+    COALESCE((order_data->>'require_inland_delivery')::boolean, false),
+    CASE WHEN (order_data ? 'final_delivery_address') THEN (order_data->'final_delivery_address')::jsonb ELSE NULL END,
+    NULLIF(order_data->>'final_destination_country_code', '')
   RETURNING id INTO new_order_id;
 
   -- Insert selected forwarders

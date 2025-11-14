@@ -1,8 +1,41 @@
+// src/data-access/messages.js
 import { createClient } from '@/lib/supabase/server';
+import { auth } from '@clerk/nextjs/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+// Helper to create authenticated Supabase client for RLS
+async function createAuthenticatedClient() {
+  const { getToken, userId } = await auth();
+
+  if ( !userId ) {
+    throw new Error('Unauthorized - No user logged in');
+  }
+
+  const supabaseAccessToken = await getToken({ template: 'supabase' });
+
+  if (!supabaseAccessToken) {
+    throw new Error('No Supabase token available. Ensure Clerk JWT template "supabase" is configured.');
+  }
+
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${supabaseAccessToken}`,
+        },
+      },
+      auth: {
+        persistSession: false,
+      },
+    }
+  )
+}
 
 // Helper function to get company member info from Clerk user ID
 async function getCompanyMemberFromClerkId(clerkUserId) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   const { data, error } = await supabase
     .from('company_members')
     .select('id, company_id')
@@ -10,12 +43,15 @@ async function getCompanyMemberFromClerkId(clerkUserId) {
     .eq('is_active', true)
     .single();
   
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching company member:', error);
+    throw error;
+  }
   return data;
 }
 
 export async function getOrderMessages(orderId) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   
   // Get messages with company and user details
   const { data: messages, error } = await supabase
@@ -47,7 +83,7 @@ export async function getOrderMessages(orderId) {
 }
 
 export async function sendOrderMessage(messageData) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   
   // Get sender's company member info
   const senderMember = await getCompanyMemberFromClerkId(messageData.sender_id);
@@ -95,7 +131,7 @@ export async function sendOrderMessage(messageData) {
 }
 
 export async function getOrderForwarders(orderId) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   const { data, error } = await supabase
     .from('order_selected_forwarders')
     .select(`
@@ -113,7 +149,7 @@ export async function getOrderForwarders(orderId) {
 }
 
 export async function getOrderExporter(orderId) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   const { data, error } = await supabase
     .from('orders')
     .select(`
@@ -134,7 +170,7 @@ export async function getOrderExporter(orderId) {
 // New function to get messages for a specific company member
 // This shows messages where the user's company is involved (either as sender or recipient)
 export async function getOrderMessagesForUser(orderId, clerkUserId) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   
   // First get the user's company
   const userMember = await getCompanyMemberFromClerkId(clerkUserId);
@@ -174,7 +210,7 @@ export async function getOrderMessagesForUser(orderId, clerkUserId) {
 
 // Function to get all company members who should see the messages
 export async function getCompanyMembers(companyId) {
-  const supabase = createClient();
+  const supabase = await createAuthenticatedClient();
   const { data, error } = await supabase
     .from('company_members')
     .select(`

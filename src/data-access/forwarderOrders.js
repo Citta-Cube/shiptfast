@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
 
-const supabase = createClient();
-
 /**
  * Get orders available to a specific forwarder
  * @param {string} forwarderId - The forwarder's company ID
@@ -9,6 +7,10 @@ const supabase = createClient();
  * @returns {Promise<Array>} - Orders with related data
  */
 export async function getForwarderOrders(forwarderId, status = null) {
+  // Create a new Supabase client within the request scope so the Clerk JWT,
+  // injected via the middleware as the Authorization header, is forwarded to Supabase
+  // for RLS evaluation.
+  const supabase = createClient();
   // Base query to get orders where the forwarder is invited
   let query = supabase
     .from('order_selected_forwarders')
@@ -27,6 +29,9 @@ export async function getForwarderOrders(forwarderId, status = null) {
         is_urgent,
         status,
         created_at,
+        require_inland_delivery,
+        final_delivery_address,
+        final_destination_country_code,
         exporter:exporter_id (
           id,
           name,
@@ -139,6 +144,9 @@ export async function getForwarderOrders(forwarderId, status = null) {
       is_urgent: item.orders.is_urgent,
       status: item.orders.status,
       created_at: item.orders.created_at,
+      require_inland_delivery: item.orders.require_inland_delivery,
+      final_delivery_address: item.orders.final_delivery_address,
+      final_destination_country_code: item.orders.final_destination_country_code,
       origin_port: item.orders.origin_port,
       destination_port: item.orders.destination_port,
       exporter: item.orders.exporter,
@@ -165,6 +173,9 @@ export async function getForwarderOrders(forwarderId, status = null) {
  * @returns {Promise<Object>} - Dashboard metrics
  */
 export async function getForwarderMetrics(forwarderId) {
+  // Same as above: create the client inside the function to ensure the request's
+  // Authorization header is attached for RLS-aware queries.
+  const supabase = createClient();
   try {
     // Get counts of open orders (not submitted and order status is OPEN)
     const { data: openOrdersCount, error: openError } = await supabase

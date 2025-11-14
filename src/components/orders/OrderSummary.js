@@ -10,6 +10,7 @@ import { ShipmentTypeIcon, LoadTypeIcon, StatusBadge } from '@/components/dashbo
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRouter } from 'next/navigation';
 import { toast } from "sonner";
+import countryCodes from '@/lib/Countries/countrycode.json';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,9 +23,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const OrderSummary = ({ order }) => {
+const OrderSummary = ({ order, canCancel = true, userMembership = null }) => {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
+  const [isChanging, setIsChanging] = useState(false);
+  const [reason, setReason] = useState('');
 
   const handleCancelOrder = async () => {
     try {
@@ -41,7 +44,7 @@ const OrderSummary = ({ order }) => {
       toast.success("Order Cancelled", {
         description: "The order has been successfully cancelled.",
       });
-      
+
       router.refresh();
     } catch (error) {
       toast.error("Error", {
@@ -52,11 +55,25 @@ const OrderSummary = ({ order }) => {
     }
   };
 
+  const getCountryNameByCode = (code) => {
+    if (!code) return null;
+    const entry = Object.entries(countryCodes).find(([name, c]) => c === (code || '').toUpperCase());
+    return entry ? entry[0] : code;
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
-          <CardTitle>Order Summary</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Order Summary
+            {/* {order.require_inland_delivery && (
+              <span className="text-primary text-sm font-medium">
+                - (Requires InLand Delivery)
+              </span>
+            )} */}
+          </CardTitle>
+
           {order.is_urgent && (
             <Badge variant="destructive" className="animate-pulse">
               <AlertTriangle className="h-3 w-3 mr-1" />
@@ -64,11 +81,12 @@ const OrderSummary = ({ order }) => {
             </Badge>
           )}
         </div>
-        {!['cancelled', 'closed'].includes(order.status.toLowerCase()) && (
+        <div className="flex items-center gap-2">
+  {canCancel && !['cancelled', 'closed', 'reassign', 'voided'].includes(order.status.toLowerCase()) && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="hover:bg-muted/50"
                 disabled={isPending}
               >
@@ -103,6 +121,102 @@ const OrderSummary = ({ order }) => {
             </AlertDialogContent>
           </AlertDialog>
         )}
+
+        {/* Admin-only status change options for CLOSED orders */}
+        {order.status === 'CLOSED' && userMembership?.companies?.type === 'EXPORTER' && userMembership?.role === 'ADMIN' && userMembership?.companies?.id === order.exporter_id && (
+          <>
+            {/* REASSIGN */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isChanging}>Reassign</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reassign Order</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will set status to REASSIGN, withdraw the selected quote, reopen other quotes, and remove ratings and final invoice.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reason (optional)</label>
+                  <textarea className="w-full border rounded p-2 text-sm" rows={3} placeholder="Reason for reassigning" value={reason} onChange={(e) => setReason(e.target.value)} />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        setIsChanging(true)
+                        const res = await fetch(`/api/orders/${order.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'REASSIGN', reason }) })
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}))
+                          throw new Error(err.error || 'Failed to reassign')
+                        }
+                        toast.success('Order reassigned')
+                        setReason('')
+                        router.refresh()
+                      } catch (e) {
+                        toast.error('Error', { description: e.message })
+                      } finally {
+                        setIsChanging(false)
+                      }
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700"
+                    disabled={isChanging}
+                  >
+                    {isChanging ? 'Working...' : 'Confirm Reassign'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* VOIDED */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={isChanging}>Void</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Void Order</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will set status to VOIDED and revoke all quotes, remove ratings and final invoice. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reason (optional)</label>
+                  <textarea className="w-full border rounded p-2 text-sm" rows={3} placeholder="Reason for voiding" value={reason} onChange={(e) => setReason(e.target.value)} />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      try {
+                        setIsChanging(true)
+                        const res = await fetch(`/api/orders/${order.id}/status`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'VOIDED', reason }) })
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}))
+                          throw new Error(err.error || 'Failed to void order')
+                        }
+                        toast.success('Order voided')
+                        setReason('')
+                        router.refresh()
+                      } catch (e) {
+                        toast.error('Error', { description: e.message })
+                      } finally {
+                        setIsChanging(false)
+                      }
+                    }}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={isChanging}
+                  >
+                    {isChanging ? 'Working...' : 'Confirm Void'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )}
+        </div>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-4">
         <div>
@@ -146,7 +260,7 @@ const OrderSummary = ({ order }) => {
           <p>{order.load_type}</p>
         </div>
         <div className="col-span-2 flex items-center space-x-2">
-        <Avatar className="h-6 w-6">
+          <Avatar className="h-6 w-6">
             <AvatarImage src={`https://flagcdn.com/w20/${order.origin_port?.country_code.toLowerCase()}.png`} />
             <AvatarFallback>{order.origin_port?.country_code}</AvatarFallback>
           </Avatar>
@@ -158,6 +272,57 @@ const OrderSummary = ({ order }) => {
           </Avatar>
           <span className="text-sm font-medium">{order.destination_port?.name}</span>
         </div>
+        {order.require_inland_delivery && (
+          <div className="col-span-2 mt-2">
+            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    Inland Delivery Details
+                  </p>
+                  <Badge variant="outline" className="text-white border-destructive/30 bg-destructive">
+                    Required
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage
+                      src={`https://flagcdn.com/w20/${order.final_destination_country_code?.toLowerCase()}.png`}
+                    />
+                    <AvatarFallback>{order.final_destination_country_code}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium text-primary">
+                    {getCountryNameByCode(order.final_destination_country_code)}
+                  </span>
+                </div>
+              </div>
+
+              <Separator className="my-2" />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Address</span>
+                  <span className="font-medium text-foreground">
+                    {order.final_delivery_address?.address || '-'}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">City</span>
+                  <span className="font-medium text-foreground">
+                    {order.final_delivery_address?.city || '-'}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Postal Code</span>
+                  <span className="font-medium text-foreground">
+                    {order.final_delivery_address?.postal_code || '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div>
           <p className="text-sm font-medium">Incoterm</p>
           <p className="text-sm font-small text-muted-foreground">{order.incoterm}</p>
@@ -194,7 +359,7 @@ const OrderSummary = ({ order }) => {
                 </div>
                 <div className="py-2">
                 </div>
-                
+
                 {value.pallets && value.pallets.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-sm font-medium">Individual Pallets: {value.pallets.length}</p>
@@ -268,7 +433,7 @@ const OrderSummary = ({ order }) => {
             </div>
           </>
         )} */}
-        
+
       </CardContent>
     </Card>
   );

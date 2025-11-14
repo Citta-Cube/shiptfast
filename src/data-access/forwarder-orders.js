@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 
 export async function getForwarderOrderById(orderId, forwarderId) {
   const supabase = createClient();

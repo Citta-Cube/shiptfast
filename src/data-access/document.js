@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 
+// Default SSR client; for privileged operations pass an admin client into functions
 const supabase = createClient();
 
 export async function getDocumentById(id) {
@@ -13,8 +14,9 @@ export async function getDocumentById(id) {
   return data;
 }
 
-export async function createDocument(document) {
-  const { data, error } = await supabase
+export async function createDocument(document, client = null) {
+  const sb = client || supabase;
+  const { data, error } = await sb
     .from('documents')
     .insert(document)
     .select()
@@ -42,8 +44,9 @@ export async function getDocumentsByOrder(orderId) {
  * @param {string} [customPath] - Optional custom storage path prefix
  * @returns {Promise<Array>} Array of processed document objects
  */
-export async function uploadDocuments(files, documentMetadata = [], entityType, customPath = '') {
+export async function uploadDocuments(files, documentMetadata = [], entityType, customPath = '', client = null) {
   try {
+    const sb = client || supabase;
     const documents = await Promise.all(
       files.map(async (file, index) => {
         const metadata = documentMetadata[index] || {};
@@ -55,7 +58,7 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
         // Final storage path: <baseDir>/<uuid>/<uuid.ext>
         const filePath = `${baseDir}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error: uploadError } = await sb.storage
           .from('documents')
           .upload(filePath, file, {
             cacheControl: '3600',
@@ -66,7 +69,7 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
           throw new Error(`Failed to upload document: ${uploadError.message}`);
         }
 
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = sb.storage
           .from('documents')
           .getPublicUrl(filePath);
 
@@ -89,7 +92,8 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
     return { documents, uploadedPaths: documents.map(doc => doc.metadata.storagePath) };
   } catch (error) {
     if (error.uploadedPaths?.length > 0) {
-      await supabase.storage.from('documents').remove(error.uploadedPaths);
+      const sb = client || supabase;
+      await sb.storage.from('documents').remove(error.uploadedPaths);
     }
     throw error;
   }
@@ -103,9 +107,7 @@ export async function uploadDocuments(files, documentMetadata = [], entityType, 
 function extractStoragePathFromUrl(fileUrl) {
   try {
     const url = new URL(fileUrl);
-    console.log("URL", url);
     const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/documents\/(.+)/);
-    console.log("pathMatch", pathMatch);
     return pathMatch ? pathMatch[1] : null;
   } catch {
     return null;
@@ -116,40 +118,43 @@ function extractStoragePathFromUrl(fileUrl) {
  * Deletes a document + its file from Supabase
  * @param {string} id - document UUID
  */
-export async function deleteDocument(id) {
+export async function deleteDocument(id, client = null) {
+  const sb = client || supabase;
   //  Get document row
-  const { data: document, error: fetchError } = await supabase
+  const { data: document, error: fetchError } = await sb
     .from('documents')
     .select('metadata, file_url')
     .eq('id', id)
     .single();
-  
-  console.log("Got document row:", document);
 
   if (fetchError) throw fetchError;
   if (!document) throw new Error("Document not found");
 
-  const storagePath =
-    document?.metadata?.storagePath ||
-    extractStoragePathFromUrl(document.file_url);
+  const rawMetadata = typeof document?.metadata === 'string'
+    ? safeJsonParse(document.metadata)
+    : document?.metadata || {};
 
-  console.log("storage Path:", storagePath);
+  const storagePath =
+    rawMetadata?.storagePath ||
+    extractStoragePathFromUrl(document.file_url);
 
   if (!storagePath) {
     throw new Error("No valid storage path found for document");
   }
   
   // Delete file from storage
-  const { error: storageError } = await supabase.storage
+  const normalizedPath = normalizeStoragePath(storagePath);
+
+  const { error: storageError } = await sb.storage
     .from('documents')
-    .remove([storagePath]);
+    .remove([normalizedPath]);
   
   if (storageError) {
     throw new Error(`Failed to delete file from storage: ${storageError.message}`);
   }
 
   // Delete DB record
-  const { error: dbError } = await supabase
+  const { error: dbError } = await sb
     .from('documents')
     .delete()
     .eq('id', id);
@@ -159,5 +164,19 @@ export async function deleteDocument(id) {
   }
 
   return { success: true, deletedId: id };
+}
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStoragePath(path) {
+  if (!path) return path;
+  const decoded = decodeURIComponent(path);
+  return decoded.startsWith('/') ? decoded.slice(1) : decoded;
 }
 

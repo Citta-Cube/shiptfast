@@ -17,13 +17,15 @@ export async function GET() {
 
     // Get user's company membership
     const membership = await getUserCompanyMembership(user.id);
-    
+
     if (!membership?.companies?.type || membership.companies.type !== 'FREIGHT_FORWARDER') {
       return NextResponse.json({ error: 'Access forbidden. Only freight forwarders can access metrics.' }, { status: 403 });
     }
 
     const forwarderId = membership.companies.id;
+
     const metrics = await getForwarderMetrics(forwarderId);
+    console.log("metrics in metrics route", metrics);
     
     return NextResponse.json(metrics);
   } catch (error) {

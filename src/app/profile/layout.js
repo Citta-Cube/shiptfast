@@ -2,22 +2,21 @@
 
 import React, { useEffect, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
-import { createClient } from '@/lib/supabase/client'
+import useSupabaseAuthClient from '@/hooks/useSupabaseAuthClient'
 import Sidebar from '@/components/ui/sidebar'
 import Header from '@/components/ui/header'
 
 const DashboardLayout = ({ children }) => {
   const { user, isLoaded } = useUser()
+  const supabase = useSupabaseAuthClient()
   const [userType, setUserType] = useState('EXPORTER')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isLoaded || !user) return
+    if (!isLoaded || !user || !supabase) return
 
     const fetchUserType = async () => {
       try {
-        const supabase = createClient()
-        
         // Fetch user's company information to determine user type
         const { data: companyData, error: companyError } = await supabase
           .from('company_members')
@@ -46,7 +45,7 @@ const DashboardLayout = ({ children }) => {
     }
 
     fetchUserType()
-  }, [isLoaded, user])
+  }, [isLoaded, user, supabase])
 
   if (!isLoaded || loading) {
     return (

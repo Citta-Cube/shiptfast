@@ -1,3 +1,4 @@
+// src/components/forwarders/ForwaderProfile/index.js
 'use client';
 
 import { useState, useEffect } from 'react';
