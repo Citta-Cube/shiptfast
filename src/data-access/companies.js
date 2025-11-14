@@ -166,16 +166,24 @@ export async function createCompanyInvitation(companyId, invitationData) {
   return data
 }
 
-export async function activateCompanyInvitation(invitationId, clerkUserId, userData) {
+// src/data-access/companies.js
+
+export async function activateCompanyInvitation(invitationId, clerkUserId, userData, useAdminClient = false) {
   console.log('🔄 [activateCompanyInvitation] Starting invitation activation:', {
     invitationId,
     clerkUserId,
     userData,
+    useAdminClient,
     timestamp: new Date().toISOString()
   })
 
   console.log('🔗 [activateCompanyInvitation] Creating Supabase client...')
-  const supabase = createClient()
+  
+  // Use admin client for webhook calls to bypass RLS
+  const supabase = useAdminClient 
+    ? (await import('@/lib/supabase/admin')).createAdminClient()
+    : createClient();
+    
   console.log('✅ [activateCompanyInvitation] Supabase client created')
 
   console.log('📝 [activateCompanyInvitation] Update data to be sent:', {

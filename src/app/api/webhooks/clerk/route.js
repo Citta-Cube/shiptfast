@@ -94,7 +94,8 @@ export async function POST(req) {
               last_name: last_name || public_metadata.lastName,
               job_title: public_metadata.jobTitle,
               role: public_metadata.role || 'VIEWER'
-            }
+            },
+            true
           )
           console.log('✅ Successfully activated invitation in Supabase:', {
             invitationId: result.id,
@@ -124,7 +125,10 @@ export async function POST(req) {
         })
         
         // Create a basic company member entry for users not created from invitations
-        const { data: insertData, error } = await supabase
+        const { createAdminClient } = await import('@/lib/supabase/admin')
+        const adminSupabase = createAdminClient()
+
+        const { data: insertData, error } = await adminSupabase
           .from('company_members')
           .insert({
             user_id: clerkUserId,
